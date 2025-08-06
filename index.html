@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Výpočet spotřeby chemické malty (FIXED)</title>
+<title>Výpočet spotřeby chemické malty</title>
 <style>
   :root { --gap: 12px; --pad: 14px; }
   body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; line-height: 1.45; margin: 0; background:#f6f7fb; color:#111; }
@@ -16,10 +16,12 @@
   input, select { width: 100%; padding: 10px 12px; border:1px solid #d5d7de; border-radius: 10px; background:#fff; font-size: 1rem; }
   .row { display:flex; gap: var(--gap); align-items: center; }
   .small { font-size: .9rem; color:#444; }
+  .muted { color:#666; font-size:.85rem; }
   .results { font-size:1.05rem; }
   .results b { font-size:1.25rem; }
   .hline { height:1px; background:#eceef3; margin:12px 0; }
   .warn { color:#b00020; font-size:.9rem; display:none; }
+  .note { margin-top:8px; font-size:.9rem; color:#444; }
 </style>
 </head>
 <body>
@@ -80,6 +82,10 @@
       </div>
 
       <p id="warn" class="warn"></p>
+      <div class="hline"></div>
+      <div class="small muted">
+        Při zadání hloubky vrtání respektujte certifikovanou kotevní hloubku. Skutečná spotřeba se může lišit podle podmínek montáže.
+      </div>
     </div>
 
     <div class="card results">
@@ -88,12 +94,16 @@
       <p>Celkový objem malty + rez.: <b><span id="objem">–</span> ml</b></p>
       <p>Počet kotev na 1 kartuši: <b><span id="pocet">–</span> ks</b></p>
       <p>Požadovaný počet kartuší: <b><span id="kartusi">–</span> ks</b></p>
+      <div class="hline"></div>
+      <div class="small">Objednací čísla</div>
+      <div id="objednavka" class="note">–</div>
     </div>
   </div>
 </div>
 
 <script>
 (function(){
+  // --- Scénáře a datové tabulky ---
   const scenare = [
     'Kotevní šroub v plném materiálu - bez sítka',
     'Kotevní šroub v děrovaném zdivu - se sítkem',
@@ -103,6 +113,7 @@
     'FHB II-AL',
     'FHB II-AS'
   ];
+
   const sroubyPlny = ['M8','M10','M12','M16','M20','M24','M30'];
   const d0Plny = { M8:10, M10:12, M12:14, M16:18, M20:24, M24:28, M30:35 };
   const StPlny = { M8:36.6, M10:58, M12:84.3, M16:157, M20:245, M24:353, M30:561 };
@@ -120,9 +131,9 @@
     'FIS H 22x1000 L':{ katalog:'45301', d0:22, coef:400, sroub:'M12-M16' },
     'UPM-SH 30X1000 L':{ katalog:'645', d0:30, coef:520, sroub:'M16-M24' }
   };
-  const sitka = Object.keys(sitkoInfo);
 
   const sroubyPBB = ['M8','M10','M12'];
+
   const pouzdroInfo = {
     'RG 8 x 75 M5 I':   { katalog:'48221', d0:10, hl:75,  V1:6000 },
     'RG 10 x 75 M6 I':  { katalog:'48222', d0:12, hl:75,  V1:6000 },
@@ -132,7 +143,6 @@
     'RG 22 x 160 M16 I':{ katalog:'50563', d0:24, hl:160, V1:16000 },
     'RG 28 x 200 M20 I':{ katalog:'50564', d0:32, hl:200, V1:48000 }
   };
-  const pouzdra = Object.keys(pouzdroInfo);
 
   const sroubyRebar = ['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40'];
   const rebarHole = {
@@ -152,8 +162,6 @@
     'M20x210': { d0:25, hl:235, V1:66000 },
     'M24x210': { d0:25, hl:235, V1:66000 }
   };
-  const fhbAL = Object.keys(fhbALInfo);
-
   const fhbASInfo = {
     'M10x60': { d0:10, hl:75,  V1:6000 },
     'M10x75': { d0:10, hl:90,  V1:8000 },
@@ -162,7 +170,6 @@
     'M20x170':{ d0:25, hl:190, V1:52000 },
     'M24x170':{ d0:25, hl:190, V1:52000 }
   };
-  const fhbAS = Object.keys(fhbASInfo);
 
   const kartuseInfo = {
     'FIS VL 300': { V:280,  kat:'538583' },
@@ -183,6 +190,7 @@
     'FIS SB 585': { V:565, kat:'520526' }
   };
 
+  // --- DOM prvky ---
   const $pouziti = document.getElementById('pouziti');
   const $sitkoWrap = document.getElementById('sitkoWrap');
   const $sitko = document.getElementById('sitko');
@@ -193,11 +201,14 @@
   const $kartuse = document.getElementById('kartuse');
   const $rezerva = document.getElementById('rezerva');
   const $warn = document.getElementById('warn');
+
   const $objem1 = document.getElementById('objem1');
   const $objem = document.getElementById('objem');
   const $pocet = document.getElementById('pocet');
   const $kartusi = document.getElementById('kartusi');
+  const $objednavka = document.getElementById('objednavka');
 
+  // --- Helpers ---
   function fillOptions(select, items, opts={}) {
     const { disabled=false, value=null } = opts;
     select.innerHTML = items.map(v => '<option>'+v+'</option>').join('');
@@ -207,6 +218,7 @@
   function makeInput(id, val){ return '<input id="'+id+'" type="number" min="1" step="1" value="'+val+'">'; }
   function makeSelect(id, items, value){ return '<select id="'+id+'">'+ items.map(v=>'<option>'+v+'</option>').join('') + '</select>'; }
 
+  // --- Init & listeners ---
   function init(){
     fillOptions($pouziti, scenare);
     fillOptions($kartuse, Object.keys(kartuseInfo));
@@ -225,9 +237,11 @@
     $rezerva.addEventListener('change', calc);
     $kartuse.addEventListener('change', calc);
     document.addEventListener('input', (e)=>{ if(e.target && e.target.id==='hloubka'){ calc(); } });
+
     calc();
   }
 
+  // --- Scénář (mění jen při změně "Použití") ---
   function setScenario(name){
     if(name==='Kotevní šroub v plném materiálu - bez sítka'){
       $sitkoWrap.style.display='none';
@@ -235,33 +249,39 @@
       fillOptions($prumer, Object.values(d0Plny), { disabled:true });
       $prumer.value = d0Plny[$sroub.value] || 10;
       $hloubkaBox.innerHTML = makeInput('hloubka', 250);
-    } else if(name==='Kotevní šroub v děrovaném zdivu - se sítkem'){
+    }
+    else if(name==='Kotevní šroub v děrovaném zdivu - se sítkem'){
       $sitkoWrap.style.display='block';
       fillOptions($sitko, Object.keys(sitkoInfo));
       fillOptions($sroub, ['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24'], { disabled:true });
       fillOptions($prumer, [12,16,20,22,30], { disabled:true });
       $hloubkaBox.innerHTML = makeInput('hloubka', 250);
-    } else if(name==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
+    }
+    else if(name==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
       $sitkoWrap.style.display='none';
       fillOptions($sroub, sroubyPBB);
       $hloubkaBox.innerHTML = makeSelect('hloubka', [75,95], 75);
       $prumer.innerHTML = '<option>–</option>'; $prumer.disabled = true;
-    } else if(name==='Kotevní pouzdro s vnitřním závitem'){
+    }
+    else if(name==='Kotevní pouzdro s vnitřním závitem'){
       $sitkoWrap.style.display='none';
-      fillOptions($sroub, pouzdra);
+      fillOptions($sroub, Object.keys(pouzdroInfo));
       fillOptions($prumer, [10,12,14,18,20,24,32], { disabled:true });
       $hloubkaBox.innerHTML = makeInput('hloubka', 250);
-    } else if(name==='Betonářská výztuž'){
+    }
+    else if(name==='Betonářská výztuž'){
       $sitkoWrap.style.display='none';
       fillOptions($sroub, sroubyRebar);
       fillOptions($prumer, rebarHole[$sroub.value] || [10], { disabled: (rebarHole[$sroub.value]||[]).length<=1 });
       $hloubkaBox.innerHTML = makeInput('hloubka', 250);
-    } else if(name==='FHB II-AL'){
+    }
+    else if(name==='FHB II-AL'){
       $sitkoWrap.style.display='none';
       fillOptions($sroub, Object.keys(fhbALInfo));
       fillOptions($prumer, [10,12,14,18,25], { disabled:true });
       $hloubkaBox.innerHTML = makeInput('hloubka', 250);
-    } else if(name==='FHB II-AS'){
+    }
+    else if(name==='FHB II-AS'){
       $sitkoWrap.style.display='none';
       fillOptions($sroub, Object.keys(fhbASInfo));
       fillOptions($prumer, [10,12,16,25], { disabled:true });
@@ -269,6 +289,7 @@
     }
   }
 
+  // --- Výpočty (nepřestavují formuláře) ---
   function calc(){
     const scen = $pouziti.value;
     const $hl = document.getElementById('hloubka');
@@ -277,6 +298,7 @@
     let d0 = parseFloat($prumer.value);
     let hl = parseFloat($hl ? $hl.value : '0');
     let k = parseInt($kotev.value || '0', 10);
+    let objed = [];
 
     $warn.style.display='none'; $warn.textContent='';
 
@@ -286,56 +308,95 @@
       const St = StPlny[s];
       const Svrtu = Math.PI*Math.pow(d0/2,2);
       V1_ml = (Svrtu - St) * hl / 1000;
-    } else if(scen==='Kotevní šroub v děrovaném zdivu - se sítkem'){
-      const info = sitkoInfo[$sitko.value];
+      // FIX: promítnout automatický průměr do pole
+      $prumer.value = d0;
+    }
+    else if(scen==='Kotevní šroub v děrovaném zdivu - se sítkem'){
+      const name = $sitko.value;
+      const info = sitkoInfo[name];
       if(info.coef){
         V1_ml = (info.coef * hl) / 1000;
         d0 = info.d0;
+        const kotvyNaTyci = Math.floor(1000/hl) || 1;
+        const sitkoCount = Math.ceil(k / kotvyNaTyci);
+        objed.push(sitkoCount + '× ' + info.katalog + ' ' + name);
       } else {
         V1_ml = info.V1 / 1000;
         d0 = info.d0;
-        if($hl) $hl.value = info.hl;
-        hl = info.hl;
+        if($hl) $hl.value = info.hl; hl = info.hl;
+        objed.push(k + '× ' + info.katalog + ' ' + name);
       }
-    } else if(scen==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
+      // FIX: promítnout d0 do pole
+      $prumer.value = d0;
+    }
+    else if(scen==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
       V1_ml = (hl == 95 ? 40 : 30);
-      d0 = NaN;
-    } else if(scen==='Kotevní pouzdro s vnitřním závitem'){
-      const info = pouzdroInfo[$sroub.value];
+      d0 = NaN; // průměr neplatný
+    }
+    else if(scen==='Kotevní pouzdro s vnitřním závitem'){
+      const name = $sroub.value;
+      const info = pouzdroInfo[name];
       V1_ml = info.V1 / 1000;
       d0 = info.d0;
-      if($hl) $hl.value = info.hl;
-      hl = info.hl;
-    } else if(scen==='Betonářská výztuž'){
+      if($hl) $hl.value = info.hl; hl = info.hl;
+      objed.push(k + '× ' + info.katalog + ' ' + name);
+      // FIX: promítnout d0 do pole
+      $prumer.value = d0;
+    }
+    else if(scen==='Betonářská výztuž'){
       const dn = parseFloat($sroub.value.replace('ø',''));
       const St = Math.PI * Math.pow(dn,2) / 4;
       const Svrtu = Math.PI * Math.pow(d0/2,2);
       if (d0 <= dn) { $warn.textContent = 'Průměr vrtaného otvoru musí být větší než průměr výztuže.'; $warn.style.display='block'; }
       V1_ml = (Svrtu - St) * hl / 1000;
-    } else if(scen==='FHB II-AL'){
-      const info = fhbALInfo[$sroub.value];
+      // zde průměr volí uživatel; nezasahujeme (kromě jediné možnosti v setScenario)
+    }
+    else if(scen==='FHB II-AL'){
+      const name = $sroub.value;
+      const info = fhbALInfo[name];
       V1_ml = info.V1 / 1000; d0 = info.d0; if($hl) $hl.value = info.hl; hl = info.hl;
-    } else if(scen==='FHB II-AS'){
-      const info = fhbASInfo[$sroub.value];
+      // FIX: promítnout d0 do pole
+      $prumer.value = d0;
+    }
+    else if(scen==='FHB II-AS'){
+      const name = $sroub.value;
+      const info = fhbASInfo[name];
       V1_ml = info.V1 / 1000; d0 = info.d0; if($hl) $hl.value = info.hl; hl = info.hl;
+      // FIX: promítnout d0 do pole
+      $prumer.value = d0;
     }
 
+    // Rezerva
     let rezerva = 1;
     const rv = ($rezerva.value||'0').trim();
     if(rv==='5 %') rezerva=1.05; else if(rv==='10 %') rezerva=1.10; else if(rv==='15 %') rezerva=1.15;
     else if(rv==='20 %') rezerva=1.20; else if(rv==='25 %') rezerva=1.25; else if(rv==='30 %') rezerva=1.30;
 
-    const kInfo = kartuseInfo[$kartuse.value] || { V: 280 };
+    // Kartuše – využitelný objem
+    const kInfo = kartuseInfo[$kartuse.value] || { V: 280, kat: '' };
     const Vk_ml = kInfo.V;
 
+    // Výsledky
     const Vcelk_ml = k * V1_ml * rezerva;
     const pocetNaKartusi = Vk_ml / V1_ml / rezerva;
     const kartusi = Math.ceil(Vcelk_ml / Vk_ml);
 
+    // Výstupy
     $objem1.textContent = isFinite(V1_ml) ? Math.round(V1_ml) : '–';
     $objem.textContent = isFinite(Vcelk_ml) ? Math.round(Vcelk_ml) : '–';
     $pocet.textContent = isFinite(pocetNaKartusi) ? Math.round(pocetNaKartusi) : '–';
     $kartusi.textContent = isFinite(kartusi) ? kartusi : '–';
+
+    // Objednávka
+    let objedStr = (isFinite(kartusi) ? (kartusi + '× ' + kInfo.kat + ' ' + $kartuse.value) : '');
+    if (objed.length) objedStr += (objedStr ? '<br>' : '') + objed.join('<br>');
+    $objednavka.innerHTML = objedStr || '–';
+
+    // Auto-resize pro parent iframe (pošli výšku)
+    requestAnimationFrame(() => {
+      const h = document.documentElement.scrollHeight;
+      try { parent.postMessage({ type:'calcHeight', height:h }, '*'); } catch(e){}
+    });
   }
 
   init();
