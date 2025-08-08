@@ -4,66 +4,29 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Kalkulačka spotřeby chemické malty</title>
+  <meta name="description" content="Online kalkulačka Fischer – rychlý výpočet spotřeby chemické malty, počtu kotev a kartuší.">
   <style>
     :root { --gap: 12px; --pad: 14px; }
+    html,body { margin:0; padding:0; }
     body {
-      margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      background: #f6f7fb;
-      color: #111;
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+      background:#f6f7fb; color:#111; line-height:1.45;
     }
-    .wrap {
-      max-width: 980px;
-      margin: 32px auto;
-      padding: 0 16px;
-    }
-    h1 {
-      font-size: 1.8rem;
-      margin: 0 0 12px;
-    }
-    .grid {
-      display: grid;
-      gap: var(--gap);
-      grid-template-columns: 1.1fr .9fr;
-    }
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-    .card {
-      background: #fff;
-      padding: var(--pad);
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.06);
-    }
-    label {
-      display: block;
-      font-size: .9rem;
-      margin-bottom: 6px;
-      color: #333;
-    }
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #d5d7de;
-      border-radius: 10px;
-      background: #fff;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-    .row {
-      display: flex;
-      gap: var(--gap);
-    }
-    .row > div {
-      flex: 1;
-      min-width: 0;
-    }
-    .small { font-size: .9rem; color: #444; }
-    .results { font-size: 1.05rem; }
-    .results b { font-size: 1.25rem; }
-    .hline { height: 1px; background: #eceef3; margin: 12px 0; }
-    .warn { color: #b00020; font-size: .9rem; display: none; }
-    .note { margin-top: 8px; font-size: .9rem; color: #444; }
+    .wrap { max-width:980px; margin:32px auto; padding:0 16px; }
+    h1 { font-size:1.8rem; margin:0 0 12px; }
+    .grid { display:grid; gap:var(--gap); grid-template-columns:1.1fr .9fr; }
+    @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+    .card{ background:#fff; padding:var(--pad); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.06); box-sizing:border-box; }
+    label{ display:block; font-size:.9rem; margin-bottom:6px; color:#333; }
+    input,select{ width:100%; padding:10px 12px; border:1px solid #d5d7de; border-radius:10px; background:#fff; font-size:1rem; box-sizing:border-box; }
+    .row{ display:flex; gap:var(--gap); }
+    .row > div{ flex:1; min-width:0; }
+    .small{ font-size:.9rem; color:#444; }
+    .results{ font-size:1.05rem; }
+    .results b{ font-size:1.25rem; }
+    .hline{ height:1px; background:#eceef3; margin:12px 0; }
+    .warn{ color:#b00020; font-size:.9rem; display:none; }
+    .note{ margin-top:8px; font-size:.9rem; color:#444; }
   </style>
 </head>
 <body>
@@ -114,13 +77,8 @@
           <div>
             <label for="rezerva">Rezerva</label>
             <select id="rezerva">
-              <option>0 %</option>
-              <option>5 %</option>
-              <option selected>10 %</option>
-              <option>15 %</option>
-              <option>20 %</option>
-              <option>25 %</option>
-              <option>30 %</option>
+              <option>0 %</option><option>5 %</option><option selected>10 %</option>
+              <option>15 %</option><option>20 %</option><option>25 %</option><option>30 %</option>
             </select>
           </div>
         </div>
@@ -142,25 +100,105 @@
     </div>
   </div>
 
-  <!-- PŮVODNÍ SCRIPT KALKULAČKY -->
+  <!-- LOGIKA KALKULAČKY -->
   <script>
-    /* zde vložen původní JS kalkulačky z tvého kódu beze změny */
-    /* --- Vložen celý obsah tvého původního <script> ... </script> --- */
+  (function(){
+    const scenare=['Kotevní šroub v plném materiálu - bez sítka','Kotevní šroub v děrovaném zdivu - se sítkem','Kotevní šroub v pórobetonu - kuželový otvor s PBB','Kotevní pouzdro s vnitřním závitem','Betonářská výztuž','FHB II-AL','FHB II-AS'];
+    const sroubyPlny=['M8','M10','M12','M16','M20','M24','M30'];
+    const d0Plny={M8:10,M10:12,M12:14,M16:18,M20:24,M24:28,M30:35};
+    const StPlny={M8:36.6,M10:58,M12:84.3,M16:157,M20:245,M24:353,M30:561};
+    const sitkoInfo={'FIS H 12x50 K':{katalog:'41900',d0:12,hl:55,V1:10000,sroub:'M6-M8'},'FIS H 12x85 K':{katalog:'41901',d0:12,hl:90,V1:20000,sroub:'M6-M8'},'FIS H 16x85 K':{katalog:'41902',d0:16,hl:90,V1:24000,sroub:'M8-M10'},'FIS H 16x130 K':{katalog:'41903',d0:16,hl:135,V1:30000,sroub:'M8-M10'},'FIS H 20x85 K':{katalog:'41904',d0:20,hl:90,V1:30000,sroub:'M12-M16'},'FIS H 20x130 K':{katalog:'46703',d0:20,hl:135,V1:50000,sroub:'M12-M16'},'FIS H 20x200 K':{katalog:'46704',d0:20,hl:205,V1:80000,sroub:'M12-M16'},'FIS H 12x1000 L':{katalog:'50598',d0:12,coef:240,sroub:'M6-M8'},'FIS H 16x1000 L':{katalog:'50599',d0:16,coef:280,sroub:'M10-M12'},'FIS H 22x1000 L':{katalog:'45301',d0:22,coef:400,sroub:'M12-M16'},'UPM-SH 30X1000 L':{katalog:'645',d0:30,coef:520,sroub:'M16-M24'}};
+    const sroubyPBB=['M8','M10','M12'];
+    const pouzdroInfo={'RG 8 x 75 M5 I':{katalog:'48221',d0:10,hl:75,V1:6000},'RG 10 x 75 M6 I':{katalog:'48222',d0:12,hl:75,V1:6000},'RG 12 x 90 M8 I':{katalog:'50552',d0:14,hl:90,V1:6000},'RG 16 x 90 M10 I':{katalog:'50553',d0:18,hl:90,V1:8000},'RG 18 x 125 M12 I':{katalog:'50562',d0:20,hl:125,V1:12000},'RG 22 x 160 M16 I':{katalog:'50563',d0:24,hl:160,V1:16000},'RG 28 x 200 M20 I':{katalog:'50564',d0:32,hl:200,V1:48000}};
+    const sroubyRebar=['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40'];
+    const rebarHole={'ø8':[10,12],'ø10':[12,14],'ø12':[14,16],'ø14':[18],'ø16':[20],'ø20':[25],'ø22':[30],'ø24':[30],'ø25':[30],'ø26':[35],'ø28':[35],'ø30':[40],'ø32':[40],'ø34':[40],'ø36':[45],'ø40':[55]};
+    const fhbALInfo={'M8x60':{d0:10,hl:75,V1:6000},'M10x95':{d0:12,hl:110,V1:10000},'M12x100':{d0:14,hl:115,V1:14000},'M12x120':{d0:14,hl:135,V1:14000},'M16x125':{d0:18,hl:140,V1:22000},'M16x145':{d0:18,hl:160,V1:26000},'M16x160':{d0:18,hl:175,V1:26000},'M20x210':{d0:25,hl:235,V1:66000},'M24x210':{d0:25,hl:235,V1:66000}};
+    const fhbASInfo={'M10x60':{d0:10,hl:75,V1:6000},'M10x75':{d0:10,hl:90,V1:8000},'M12x75':{d0:12,hl:90,V1:8000},'M16x95':{d0:16,hl:110,V1:16000},'M20x170':{d0:25,hl:190,V1:52000},'M24x170':{d0:25,hl:190,V1:52000}};
+    const kartuseInfo={'FIS VL 300':{V:280,kat:'538583'},'FIS VL 410':{V:390,kat:'538584'},'FIS VL HIGHSPEED 300':{V:280,kat:'538585'},'FIS VL HIGHSPEED 410':{V:390,kat:'538586'},'FIS V Zero':{V:280,kat:'562064'},'FIS V 360':{V:340,kat:'43994'},'FIS V Plus 360':{V:340,kat:'558762'},'FIS VW 360':{V:340,kat:'43997'},'FIS VW Plus 360':{V:340,kat:'558768'},'FIS P 300':{V:280,kat:'51061'},'FIS EM Plus 390':{V:370,kat:'544176'},'FIS EM Plus 585':{V:565,kat:'544165'},'FIS EM Plus 1500':{V:1470,kat:'544167'},'FIS HB 360 S':{V:340,kat:'562660'},'FIS SB 390':{V:370,kat:'520555'},'FIS SB 585':{V:565,kat:'520526'}};
+
+    const $=id=>document.getElementById(id);
+    const $pouziti=$('pouziti'),$sitkoWrap=$('sitkoWrap'),$sitko=$('sitko'),$sroub=$('sroub'),$prumer=$('prumer'),$hlBox=$('hloubkaBox'),$kotev=$('kotev'),$kartuse=$('kartuse'),$rezerva=$('rezerva'),$warn=$('warn');
+    const $objem1=$('objem1'),$objem=$('objem'),$pocet=$('pocet'),$kartusi=$('kartusi'),$objed=$('objednavka');
+
+    const opt=(sel,arr,dis=false,val=null)=>{sel.innerHTML=arr.map(v=>`<option>${v}</option>`).join('');sel.disabled=dis;if(val!==null)sel.value=val;};
+    const makeInp=(v)=>`<input id="hloubka" type="number" min="1" step="1" value="${v}">`;
+    const makeSel=(arr,v)=>`<select id="hloubka">${arr.map(x=>`<option${x===v?' selected':''}>${x}</option>`).join('')}</select>`;
+
+    function init(){
+      opt($pouziti,scenare); opt($kartuse,Object.keys(kartuseInfo));
+      setScenario(scenare[0]); calc();
+      $pouziti.onchange=()=>{setScenario($pouziti.value);calc()};
+      [$sitko,$prumer,$kotev,$kartuse,$rezerva].forEach(el=>el.onchange=calc);
+      $sroub.onchange=()=>{if($pouziti.value==='Betonářská výztuž'){opt($prumer,rebarHole[$sroub.value]||[10],(rebarHole[$sroub.value]||[]).length<=1)}calc();};
+      document.addEventListener('input',e=>e.target.id==='hloubka'&&calc());
+    }
+
+    function setScenario(name){
+      if(name==='Kotevní šroub v plném materiálu - bez sítka'){
+        $sitkoWrap.style.display='none'; opt($sroub,sroubyPlny); opt($prumer,Object.values(d0Plny),true); $prumer.value=d0Plny[$sroub.value]; $hlBox.innerHTML=makeInp(250);
+      }else if(name==='Kotevní šroub v děrovaném zdivu - se sítkem'){
+        $sitkoWrap.style.display='block'; opt($sitko,Object.keys(sitkoInfo)); opt($sroub,['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24'],true); opt($prumer,[12,16,20,22,30],true); $hlBox.innerHTML=makeInp(250);
+      }else if(name==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
+        $sitkoWrap.style.display='none'; opt($sroub,sroubyPBB); $hlBox.innerHTML=makeSel([75,95],75); $prumer.innerHTML='<option>–</option>'; $prumer.disabled=true;
+      }else if(name==='Kotevní pouzdro s vnitřním závitem'){
+        $sitkoWrap.style.display='none'; opt($sroub,Object.keys(pouzdroInfo)); opt($prumer,[10,12,14,18,20,24,32],true); $hlBox.innerHTML=makeInp(250);
+      }else if(name==='Betonářská výztuž'){
+        $sitkoWrap.style.display='none'; opt($sroub,sroubyRebar); opt($prumer,rebarHole[$sroub.value]||[10],(rebarHole[$sroub.value]||[]).length<=1); $hlBox.innerHTML=makeInp(250);
+      }else if(name==='FHB II-AL'){
+        $sitkoWrap.style.display='none'; opt($sroub,Object.keys(fhbALInfo)); opt($prumer,[10,12,14,18,25],true); $hlBox.innerHTML=makeInp(250);
+      }else if(name==='FHB II-AS'){
+        $sitkoWrap.style.display='none'; opt($sroub,Object.keys(fhbASInfo)); opt($prumer,[10,12,16,25],true); $hlBox.innerHTML=makeInp(250);
+      }
+    }
+
+    function calc(){
+      const scen=$pouziti.value, hlInput=$('hloubka');
+      let V1=0,d0=parseFloat($prumer.value),hl=parseFloat(hlInput.value||0),k=parseInt($kotev.value||0,10),objed=[];
+      $warn.style.display='none';
+
+      if(scen==='Kotevní šroub v plném materiálu - bez sítka'){
+        const s=$sroub.value; d0=d0Plny[s]; const St=StPlny[s],Sv=Math.PI*(d0/2)**2; V1=(Sv-St)*hl/1000; $prumer.value=d0;
+      }else if(scen==='Kotevní šroub v děrovaném zdivu - se sítkem'){
+        const i=sitkoInfo[$sitko.value]; if(i.coef){V1=i.coef*hl/1000;d0=i.d0;const ks=Math.ceil(k/Math.max(1,Math.floor(1000/hl)));objed.push(`${ks}× ${i.katalog} ${$sitko.value}`);}else{V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;objed.push(`${k}× ${i.katalog} ${$sitko.value}`);} $prumer.value=d0;
+      }else if(scen==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){V1=hl==95?40:30;d0=NaN;}
+      else if(scen==='Kotevní pouzdro s vnitřním závitem'){const i=pouzdroInfo[$sroub.value];V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;$prumer.value=d0;objed.push(`${k}× ${i.katalog} ${$sroub.value}`);}
+      else if(scen==='Betonářská výztuž'){const dn=parseFloat($sroub.value.slice(1));const St=Math.PI*dn*dn/4,Sv=Math.PI*(d0/2)**2;if(d0<=dn){$warn.textContent='Průměr vrtaného otvoru musí být větší než průměr výztuže.';$warn.style.display='block';}V1=(Sv-St)*hl/1000;}
+      else if(scen==='FHB II-AL'){const i=fhbALInfo[$sroub.value];V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;$prumer.value=d0;}
+      else if(scen==='FHB II-AS'){const i=fhbASInfo[$sroub.value];V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;$prumer.value=d0;}
+
+      const rez={ '5 %':1.05,'10 %':1.10,'15 %':1.15,'20 %':1.20,'25 %':1.25,'30 %':1.30 }[$rezerva.value]||1;
+      const kInfo=kartuseInfo[$kartuse.value], Vk=kInfo.V;
+      const Vcelk=k*V1*rez, ks=Math.ceil(Vcelk/Vk), kotvNaKartusi=Vk/(V1*rez);
+
+      $objem1.textContent=isFinite(V1)?Math.round(V1):'–';
+      $objem.textContent=isFinite(Vcelk)?Math.round(Vcelk):'–';
+      $pocet.textContent=isFinite(kotvNaKartusi)?Math.round(kotvNaKartusi):'–';
+      $kartusi.textContent=isFinite(ks)?ks:'–';
+      let objedStr= isFinite(ks)?`${ks}× ${kInfo.kat} ${$kartuse.value}`:'';
+      if(objed.length)objedStr+=(objedStr?'<br>':'')+objed.join('<br>');
+      $objed.innerHTML=objedStr||'–';
+
+      // po každém přepočtu pošli výšku rodiči (kvůli iframe auto-height)
+      if (window.parent) {
+        const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);
+        window.parent.postMessage({type:'calcHeight',height:h},'*');
+      }
+    }
+
+    init();
+  })();
   </script>
 
-  <!-- NOVÝ SCRIPT PRO AUTO-RESIZE IFRAME -->
+  <!-- AUTO-RESIZE: po načtení/změně pošli výšku rodiči (parent) -->
   <script>
-    (function () {
-      function sendHeight() {
-        var h = Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        );
-        parent.postMessage({ type: 'calcHeight', height: h }, '*');
+    (function(){
+      function sendHeight(){
+        var h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+        if (window.parent) window.parent.postMessage({type:'calcHeight', height:h}, '*');
       }
       window.addEventListener('load', sendHeight);
       window.addEventListener('resize', sendHeight);
-      new ResizeObserver(sendHeight).observe(document.body);
+      try { new ResizeObserver(sendHeight).observe(document.body); } catch(e){}
       setTimeout(sendHeight, 300);
     })();
   </script>
