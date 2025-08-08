@@ -3,237 +3,304 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Kalkulačka spotřeby chemické malty</title>
-  <meta name="description" content="Online kalkulačka Fischer – rychlý výpočet spotřeby chemické malty, počtu kotev a kartuší.">
+  <title>Kalkulačka spotřeby chemické malty | Fischer</title>
+  <meta name="description" content="Online kalkulačka Fischer – rychlý výpočet spotřeby chemické malty, potřebného počtu kartuší a příslušenství.">
+  <meta name="robots" content="index,follow">
   <style>
-    :root { --gap: 12px; --pad: 14px; }
-    html,body { margin:0; padding:0; }
+    /* Základ */
+    html, body { margin:0; padding:0; }
     body {
-      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-      background:#f6f7fb; color:#111; line-height:1.45;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background:#fff; color:#111; line-height:1.5;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
-    .wrap { max-width:980px; margin:32px auto; padding:0 16px; }
-    h1 { font-size:1.8rem; margin:0 0 12px; }
-    .grid { display:grid; gap:var(--gap); grid-template-columns:1.1fr .9fr; }
-    @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
-    .card{ background:#fff; padding:var(--pad); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.06); box-sizing:border-box; }
-    label{ display:block; font-size:.9rem; margin-bottom:6px; color:#333; }
-    input,select{ width:100%; padding:10px 12px; border:1px solid #d5d7de; border-radius:10px; background:#fff; font-size:1rem; box-sizing:border-box; }
-    .row{ display:flex; gap:var(--gap); }
-    .row > div{ flex:1; min-width:0; }
-    .small{ font-size:.9rem; color:#444; }
-    .results{ font-size:1.05rem; }
-    .results b{ font-size:1.25rem; }
-    .hline{ height:1px; background:#eceef3; margin:12px 0; }
-    .warn{ color:#b00020; font-size:.9rem; display:none; }
-    .note{ margin-top:8px; font-size:.9rem; color:#444; }
+    .container { max-width:980px; margin:0 auto; padding:16px; }
+
+    /* Typografie */
+    h1, h2, h3 { color:#222; margin:24px 0 12px; }
+    h1 { font-size:2rem; }
+    h2 { font-size:1.5rem; }
+    h3 { font-size:1.2rem; }
+    p, li { margin-bottom:12px; }
+    img.resp { display:block; max-width:100%; height:auto; margin:0 auto 24px; }
+
+    /* Karta kalkulačky */
+    .calc-card{
+      border:1px solid #e5e5e5;
+      border-radius:12px;
+      padding:16px;
+      box-shadow:0 1px 6px rgba(0,0,0,.06);
+      margin: 8px 0 24px;
+      background:#fff;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    @media (min-width:700px){
+      .grid{ grid-template-columns: repeat(2, 1fr); }
+    }
+    label{ display:block; font-weight:600; margin-bottom:6px; }
+    input[type="number"], select{
+      width:100%;
+      box-sizing:border-box;
+      padding:10px 12px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      font-size:1rem;
+      background:#fff;
+    }
+    .result{
+      margin-top:16px;
+      border-top:1px dashed #ddd;
+      padding-top:16px;
+    }
+    .result-list{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:8px;
+    }
+    @media (min-width:700px){
+      .result-list{ grid-template-columns: repeat(3, 1fr); }
+    }
+    .stat{
+      padding:12px;
+      background:#f8f8f8;
+      border-radius:8px;
+      border:1px solid #eee;
+    }
+    .stat .val{ font-size:1.25rem; font-weight:700; }
+    .muted{ color:#666; font-size:.92rem; }
+
+    /* Další prvky */
+    pre { background:#f0f0f0; padding:12px; overflow-x:auto; }
+    ul, ol { padding-left:1.2em; margin-bottom:24px; }
+    ul.faq li { margin-bottom:8px; }
+    .highlight { font-weight:bold; }
   </style>
 </head>
-<script>
-(function(){
-  function pageHeight(){
-    return Math.max(
-      document.documentElement.scrollHeight,
-      document.documentElement.offsetHeight,
-      document.body ? document.body.scrollHeight : 0,
-      document.body ? document.body.offsetHeight : 0
-    );
-  }
-  function send(){ parent.postMessage({ type:'calcHeight', height: pageHeight() }, '*'); }
+<body>
+  <div class="container">
+    <!-- Úvodní obrázek (volitelné) -->
+    <img src="img/chemicka-malta.jpg" alt="Aplikace chemické malty Fischer" class="resp" onerror="this.style.display='none'">
 
-  // Po načtení a s malou rezervou
-  window.addEventListener('load', send);
-  setTimeout(send, 0);
-  setTimeout(send, 400);
-  setTimeout(send, 1200);
+    <!-- Nadpis a úvod -->
+    <h1>Kalkulačka spotřeby chemické malty Fischer</h1>
+    <p>Rychle spočítejte potřebné množství malty, počet kotev i kartuší – přímo ve vašem prohlížeči. Ideální pro projektanty, montážní techniky i e-shop.</p>
 
-  // Odpověď na "ping" od rodiče
-  window.addEventListener('message', function(e){
-    var d = e.data || {};
-    if (d.type === 'pingHeight') send();
-  });
+    <!-- Kalkulačka – plně inline, bez iframe -->
+    <div class="calc-card" id="calc">
+      <h2>Interaktivní kalkulačka spotřeby</h2>
 
-  // Reakce na změny rozměrů / fonty / resize
-  if (window.ResizeObserver){
-    var ro = new ResizeObserver(send);
-    ro.observe(document.documentElement);
-    if (document.body) ro.observe(document.body);
-  }
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(send);
-  window.addEventListener('resize', send);
-})();
-</script>
-  <body>
-  <div class="wrap">
-    <h1>Kalkulačka spotřeby chemické malty</h1>
-
-    <div class="grid">
-      <!-- FORMULÁŘ -->
-      <div class="card">
-        <div class="row">
-          <div>
-            <label for="pouziti">Použití</label>
-            <select id="pouziti"></select>
-          </div>
-          <div id="sitkoWrap" style="display:none">
-            <label for="sitko">Sítko</label>
-            <select id="sitko"></select>
-          </div>
+      <div class="grid">
+        <div>
+          <label for="diameter">Ø vrtáku (mm)</label>
+          <input id="diameter" type="number" inputmode="decimal" step="0.1" min="1" placeholder="např. 14" value="14">
         </div>
-
-        <div class="row">
-          <div>
-            <label for="sroub">Kotevní šroub / výztuž</label>
-            <select id="sroub"></select>
-          </div>
-          <div>
-            <label for="prumer">Průměr vrtaného otvoru [mm]</label>
-            <select id="prumer"></select>
-          </div>
+        <div>
+          <label for="depth">Hloubka otvoru (mm)</label>
+          <input id="depth" type="number" inputmode="decimal" step="1" min="10" placeholder="např. 120" value="120">
         </div>
-
-        <div class="row">
-          <div>
-            <label for="hloubka">Hloubka vrtání [mm]</label>
-            <div id="hloubkaBox"></div>
-          </div>
-          <div>
-            <label for="kotev">Počet kotev [ks]</label>
-            <input id="kotev" type="number" min="1" step="1" value="10">
-          </div>
+        <div>
+          <label for="count">Počet kotev (ks)</label>
+          <input id="count" type="number" step="1" min="1" placeholder="např. 4" value="1">
         </div>
-
-        <div class="row">
-          <div>
-            <label for="kartuse">Volba kartuše</label>
-            <select id="kartuse"></select>
-          </div>
-          <div>
-            <label for="rezerva">Rezerva</label>
-            <select id="rezerva">
-              <option>0 %</option><option>5 %</option><option selected>10 %</option>
-              <option>15 %</option><option>20 %</option><option>25 %</option><option>30 %</option>
-            </select>
-          </div>
+        <div>
+          <label for="density">Hustota malty (kg/l)</label>
+          <input id="density" type="number" inputmode="decimal" step="0.05" min="0.5" placeholder="~1,50" value="1.50">
         </div>
-
-        <p id="warn" class="warn"></p>
+        <div>
+          <label for="waste">Rezerva na ztráty (%)</label>
+          <input id="waste" type="number" step="1" min="0" max="50" placeholder="např. 10" value="10">
+        </div>
+        <div>
+          <label for="cartridge">Velikost kartuše (ml)</label>
+          <select id="cartridge">
+            <option value="150">150 ml</option>
+            <option value="300" selected>300 ml</option>
+            <option value="360">360 ml</option>
+            <option value="390">390 ml</option>
+            <option value="410">410 ml</option>
+          </select>
+        </div>
       </div>
 
-      <!-- VÝSLEDKY -->
-      <div class="card results">
-        <div class="small">Výsledky</div>
-        <p>Objem malty na 1 kotvu: <b><span id="objem1">–</span> ml</b></p>
-        <p>Celkový objem malty + rez.: <b><span id="objem">–</span> ml</b></p>
-        <p>Počet kotev na 1 kartuši: <b><span id="pocet">–</span> ks</b></p>
-        <p>Požadovaný počet kartuší: <b><span id="kartusi">–</span> ks</b></p>
-        <div class="hline"></div>
-        <div class="small">Objednací čísla</div>
-        <div id="objednavka" class="note">–</div>
+      <div class="result" aria-live="polite">
+        <div class="result-list">
+          <div class="stat">
+            <div class="muted">Objem malty (celkem)</div>
+            <div class="val"><span id="volMl">–</span> ml</div>
+            <div class="muted">včetně rezervy</div>
+          </div>
+          <div class="stat">
+            <div class="muted">Hmotnost malty (celkem)</div>
+            <div class="val"><span id="grams">–</span> g</div>
+            <div class="muted">při zadané hustotě</div>
+          </div>
+          <div class="stat">
+            <div class="muted">Počet kartuší</div>
+            <div class="val"><span id="cartridges">–</span> ks</div>
+            <div class="muted">zaokrouhleno nahoru</div>
+          </div>
+        </div>
+        <p class="muted" id="note"></p>
       </div>
     </div>
+
+    <!-- SEO obsah -->
+    <h2>Jak funguje výpočet spotřeby malty</h2>
+    <p>Pro základní orientaci použijte následující obecný vzorec:</p>
+    <pre>
+Objem válcového otvoru = π × (Ø / 2)² × hloubka
+Spotřeba malty [g] ≈ objem [l] × hustota malty [kg/l] × 1 000
+    </pre>
+
+    <h2>FAQ – často kladené dotazy</h2>
+
+    <h3>Proč chemické kotvy nedrží ve zdi?</h3>
+    <ul class="faq">
+      <li><span class="highlight">Nesprávný průměr vrtáku:</span> Musí odpovídat Ø malty dle ETA/technického listu.</li>
+      <li><span class="highlight">Nedostatečné čištění otvoru:</span> Kartáč + vyfouknutí min. 4×.</li>
+      <li><span class="highlight">Krátká doba vytvrzení:</span> Dodržte doporučené časy gelování i finálního vytvrzení.</li>
+      <li><span class="highlight">Nevhodný typ malty:</span> Pro pórobeton nebo zaplavené otvory volte speciální varianty (FIS VL, FIS EM Plus).</li>
+    </ul>
+
+    <h3>Do jaké teploty lze kotvy použít?</h3>
+    <ul class="faq">
+      <li><span class="highlight">Nižší teploty:</span> Zimní verze tuhnou od −10 °C (FIS SB, FIS V Plus HS).</li>
+      <li><span class="highlight">Vyšší teploty:</span> Standardní malty pracují do +40 °C, vinylesterové až do +80 °C.</li>
+    </ul>
+
+    <h3>Jaké průměry děr vrtat?</h3>
+    <ul class="faq">
+      <li><span class="highlight">Beton C25/30:</span> Ø vrtáku = Ø tyče + 2 mm (např. M12 → 14 mm).</li>
+      <li><span class="highlight">Pórobeton / duté zdivo:</span> Vždy se sítkem – Ø dle tabulky (např. PP4 → 20 mm kužel).</li>
+    </ul>
+
+    <h3>Jak vypočítat malty ručně?</h3>
+    <ol>
+      <li>Změřte Ø vrtáku (mm) a hloubku otvoru (mm).</li>
+      <li>Objem (l) = π × (Ø/2)² × hloubka / 1 000 000.</li>
+      <li>Vynásobte hustotou malty (~1,5 kg/l) a převeďte na gramy.</li>
+      <li>Přidejte ~10 % rezervu na ztráty při vstřikování.</li>
+    </ol>
+
+    <h2>Co je to chemická malta?</h2>
+    <p>Chemická malta (injektážní lepidlo) je dvousložková pryskyřice, která po smíchání vytvrzuje a pevně kotví závitové tyče, výztuže či pouzdra bez rozšiřování trhlin v podkladu. Vytváří vysoce odolné spojení – ideální pro těžké ocelové konstrukce, zábradlí či solární panely.</p>
+
+    <h2>Další tipy pro správnou aplikaci</h2>
+    <ul>
+      <li>Používejte vhodné sítko pro pórobeton a duté zdivo.</li>
+      <li>Originální příslušenství Fischer: montážní pistole, kartáče, foukačky.</li>
+      <li>Dodržujte technologický postup ETA pro zajištění až 100leté životnosti kotvy.</li>
+    </ul>
+
+    <h2>Proč zvolit Fischer?</h2>
+    <p>Chemické kotevní systémy Fischer poskytují spolehlivé uchycení i v nejnáročnějších podmínkách. Nabízíme malty pro −10 °C až +80 °C, řešení pro zaplavené otvory, kompletní sortiment příslušenství a ETA certifikace až na 100 let.</p>
   </div>
 
-  <!-- LOGIKA KALKULAČKY -->
-  <script>
-  (function(){
-    const scenare=['Kotevní šroub v plném materiálu - bez sítka','Kotevní šroub v děrovaném zdivu - se sítkem','Kotevní šroub v pórobetonu - kuželový otvor s PBB','Kotevní pouzdro s vnitřním závitem','Betonářská výztuž','FHB II-AL','FHB II-AS'];
-    const sroubyPlny=['M8','M10','M12','M16','M20','M24','M30'];
-    const d0Plny={M8:10,M10:12,M12:14,M16:18,M20:24,M24:28,M30:35};
-    const StPlny={M8:36.6,M10:58,M12:84.3,M16:157,M20:245,M24:353,M30:561};
-    const sitkoInfo={'FIS H 12x50 K':{katalog:'41900',d0:12,hl:55,V1:10000,sroub:'M6-M8'},'FIS H 12x85 K':{katalog:'41901',d0:12,hl:90,V1:20000,sroub:'M6-M8'},'FIS H 16x85 K':{katalog:'41902',d0:16,hl:90,V1:24000,sroub:'M8-M10'},'FIS H 16x130 K':{katalog:'41903',d0:16,hl:135,V1:30000,sroub:'M8-M10'},'FIS H 20x85 K':{katalog:'41904',d0:20,hl:90,V1:30000,sroub:'M12-M16'},'FIS H 20x130 K':{katalog:'46703',d0:20,hl:135,V1:50000,sroub:'M12-M16'},'FIS H 20x200 K':{katalog:'46704',d0:20,hl:205,V1:80000,sroub:'M12-M16'},'FIS H 12x1000 L':{katalog:'50598',d0:12,coef:240,sroub:'M6-M8'},'FIS H 16x1000 L':{katalog:'50599',d0:16,coef:280,sroub:'M10-M12'},'FIS H 22x1000 L':{katalog:'45301',d0:22,coef:400,sroub:'M12-M16'},'UPM-SH 30X1000 L':{katalog:'645',d0:30,coef:520,sroub:'M16-M24'}};
-    const sroubyPBB=['M8','M10','M12'];
-    const pouzdroInfo={'RG 8 x 75 M5 I':{katalog:'48221',d0:10,hl:75,V1:6000},'RG 10 x 75 M6 I':{katalog:'48222',d0:12,hl:75,V1:6000},'RG 12 x 90 M8 I':{katalog:'50552',d0:14,hl:90,V1:6000},'RG 16 x 90 M10 I':{katalog:'50553',d0:18,hl:90,V1:8000},'RG 18 x 125 M12 I':{katalog:'50562',d0:20,hl:125,V1:12000},'RG 22 x 160 M16 I':{katalog:'50563',d0:24,hl:160,V1:16000},'RG 28 x 200 M20 I':{katalog:'50564',d0:32,hl:200,V1:48000}};
-    const sroubyRebar=['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40'];
-    const rebarHole={'ø8':[10,12],'ø10':[12,14],'ø12':[14,16],'ø14':[18],'ø16':[20],'ø20':[25],'ø22':[30],'ø24':[30],'ø25':[30],'ø26':[35],'ø28':[35],'ø30':[40],'ø32':[40],'ø34':[40],'ø36':[45],'ø40':[55]};
-    const fhbALInfo={'M8x60':{d0:10,hl:75,V1:6000},'M10x95':{d0:12,hl:110,V1:10000},'M12x100':{d0:14,hl:115,V1:14000},'M12x120':{d0:14,hl:135,V1:14000},'M16x125':{d0:18,hl:140,V1:22000},'M16x145':{d0:18,hl:160,V1:26000},'M16x160':{d0:18,hl:175,V1:26000},'M20x210':{d0:25,hl:235,V1:66000},'M24x210':{d0:25,hl:235,V1:66000}};
-    const fhbASInfo={'M10x60':{d0:10,hl:75,V1:6000},'M10x75':{d0:10,hl:90,V1:8000},'M12x75':{d0:12,hl:90,V1:8000},'M16x95':{d0:16,hl:110,V1:16000},'M20x170':{d0:25,hl:190,V1:52000},'M24x170':{d0:25,hl:190,V1:52000}};
-    const kartuseInfo={'FIS VL 300':{V:280,kat:'538583'},'FIS VL 410':{V:390,kat:'538584'},'FIS VL HIGHSPEED 300':{V:280,kat:'538585'},'FIS VL HIGHSPEED 410':{V:390,kat:'538586'},'FIS V Zero':{V:280,kat:'562064'},'FIS V 360':{V:340,kat:'43994'},'FIS V Plus 360':{V:340,kat:'558762'},'FIS VW 360':{V:340,kat:'43997'},'FIS VW Plus 360':{V:340,kat:'558768'},'FIS P 300':{V:280,kat:'51061'},'FIS EM Plus 390':{V:370,kat:'544176'},'FIS EM Plus 585':{V:565,kat:'544165'},'FIS EM Plus 1500':{V:1470,kat:'544167'},'FIS HB 360 S':{V:340,kat:'562660'},'FIS SB 390':{V:370,kat:'520555'},'FIS SB 585':{V:565,kat:'520526'}};
-
-    const $=id=>document.getElementById(id);
-    const $pouziti=$('pouziti'),$sitkoWrap=$('sitkoWrap'),$sitko=$('sitko'),$sroub=$('sroub'),$prumer=$('prumer'),$hlBox=$('hloubkaBox'),$kotev=$('kotev'),$kartuse=$('kartuse'),$rezerva=$('rezerva'),$warn=$('warn');
-    const $objem1=$('objem1'),$objem=$('objem'),$pocet=$('pocet'),$kartusi=$('kartusi'),$objed=$('objednavka');
-
-    const opt=(sel,arr,dis=false,val=null)=>{sel.innerHTML=arr.map(v=>`<option>${v}</option>`).join('');sel.disabled=dis;if(val!==null)sel.value=val;};
-    const makeInp=(v)=>`<input id="hloubka" type="number" min="1" step="1" value="${v}">`;
-    const makeSel=(arr,v)=>`<select id="hloubka">${arr.map(x=>`<option${x===v?' selected':''}>${x}</option>`).join('')}</select>`;
-
-    function init(){
-      opt($pouziti,scenare); opt($kartuse,Object.keys(kartuseInfo));
-      setScenario(scenare[0]); calc();
-      $pouziti.onchange=()=>{setScenario($pouziti.value);calc()};
-      [$sitko,$prumer,$kotev,$kartuse,$rezerva].forEach(el=>el.onchange=calc);
-      $sroub.onchange=()=>{if($pouziti.value==='Betonářská výztuž'){opt($prumer,rebarHole[$sroub.value]||[10],(rebarHole[$sroub.value]||[]).length<=1)}calc();};
-      document.addEventListener('input',e=>e.target.id==='hloubka'&&calc());
-    }
-
-    function setScenario(name){
-      if(name==='Kotevní šroub v plném materiálu - bez sítka'){
-        $sitkoWrap.style.display='none'; opt($sroub,sroubyPlny); opt($prumer,Object.values(d0Plny),true); $prumer.value=d0Plny[$sroub.value]; $hlBox.innerHTML=makeInp(250);
-      }else if(name==='Kotevní šroub v děrovaném zdivu - se sítkem'){
-        $sitkoWrap.style.display='block'; opt($sitko,Object.keys(sitkoInfo)); opt($sroub,['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24'],true); opt($prumer,[12,16,20,22,30],true); $hlBox.innerHTML=makeInp(250);
-      }else if(name==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
-        $sitkoWrap.style.display='none'; opt($sroub,sroubyPBB); $hlBox.innerHTML=makeSel([75,95],75); $prumer.innerHTML='<option>–</option>'; $prumer.disabled=true;
-      }else if(name==='Kotevní pouzdro s vnitřním závitem'){
-        $sitkoWrap.style.display='none'; opt($sroub,Object.keys(pouzdroInfo)); opt($prumer,[10,12,14,18,20,24,32],true); $hlBox.innerHTML=makeInp(250);
-      }else if(name==='Betonářská výztuž'){
-        $sitkoWrap.style.display='none'; opt($sroub,sroubyRebar); opt($prumer,rebarHole[$sroub.value]||[10],(rebarHole[$sroub.value]||[]).length<=1); $hlBox.innerHTML=makeInp(250);
-      }else if(name==='FHB II-AL'){
-        $sitkoWrap.style.display='none'; opt($sroub,Object.keys(fhbALInfo)); opt($prumer,[10,12,14,18,25],true); $hlBox.innerHTML=makeInp(250);
-      }else if(name==='FHB II-AS'){
-        $sitkoWrap.style.display='none'; opt($sroub,Object.keys(fhbASInfo)); opt($prumer,[10,12,16,25],true); $hlBox.innerHTML=makeInp(250);
-      }
-    }
-
-    function calc(){
-      const scen=$pouziti.value, hlInput=$('hloubka');
-      let V1=0,d0=parseFloat($prumer.value),hl=parseFloat(hlInput.value||0),k=parseInt($kotev.value||0,10),objed=[];
-      $warn.style.display='none';
-
-      if(scen==='Kotevní šroub v plném materiálu - bez sítka'){
-        const s=$sroub.value; d0=d0Plny[s]; const St=StPlny[s],Sv=Math.PI*(d0/2)**2; V1=(Sv-St)*hl/1000; $prumer.value=d0;
-      }else if(scen==='Kotevní šroub v děrovaném zdivu - se sítkem'){
-        const i=sitkoInfo[$sitko.value]; if(i.coef){V1=i.coef*hl/1000;d0=i.d0;const ks=Math.ceil(k/Math.max(1,Math.floor(1000/hl)));objed.push(`${ks}× ${i.katalog} ${$sitko.value}`);}else{V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;objed.push(`${k}× ${i.katalog} ${$sitko.value}`);} $prumer.value=d0;
-      }else if(scen==='Kotevní šroub v pórobetonu - kuželový otvor s PBB'){V1=hl==95?40:30;d0=NaN;}
-      else if(scen==='Kotevní pouzdro s vnitřním závitem'){const i=pouzdroInfo[$sroub.value];V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;$prumer.value=d0;objed.push(`${k}× ${i.katalog} ${$sroub.value}`);}
-      else if(scen==='Betonářská výztuž'){const dn=parseFloat($sroub.value.slice(1));const St=Math.PI*dn*dn/4,Sv=Math.PI*(d0/2)**2;if(d0<=dn){$warn.textContent='Průměr vrtaného otvoru musí být větší než průměr výztuže.';$warn.style.display='block';}V1=(Sv-St)*hl/1000;}
-      else if(scen==='FHB II-AL'){const i=fhbALInfo[$sroub.value];V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;$prumer.value=d0;}
-      else if(scen==='FHB II-AS'){const i=fhbASInfo[$sroub.value];V1=i.V1/1000;d0=i.d0;hlInput.value=i.hl;hl=i.hl;$prumer.value=d0;}
-
-      const rez={ '5 %':1.05,'10 %':1.10,'15 %':1.15,'20 %':1.20,'25 %':1.25,'30 %':1.30 }[$rezerva.value]||1;
-      const kInfo=kartuseInfo[$kartuse.value], Vk=kInfo.V;
-      const Vcelk=k*V1*rez, ks=Math.ceil(Vcelk/Vk), kotvNaKartusi=Vk/(V1*rez);
-
-      $objem1.textContent=isFinite(V1)?Math.round(V1):'–';
-      $objem.textContent=isFinite(Vcelk)?Math.round(Vcelk):'–';
-      $pocet.textContent=isFinite(kotvNaKartusi)?Math.round(kotvNaKartusi):'–';
-      $kartusi.textContent=isFinite(ks)?ks:'–';
-      let objedStr= isFinite(ks)?`${ks}× ${kInfo.kat} ${$kartuse.value}`:'';
-      if(objed.length)objedStr+=(objedStr?'<br>':'')+objed.join('<br>');
-      $objed.innerHTML=objedStr||'–';
-
-      // po každém přepočtu pošli výšku rodiči (kvůli iframe auto-height)
-      if (window.parent) {
-        const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);
-        window.parent.postMessage({type:'calcHeight',height:h},'*');
-      }
-    }
-
-    init();
-  })();
-  </script>
-
-  <!-- AUTO-RESIZE: po načtení/změně pošli výšku rodiči (parent) -->
   <script>
     (function(){
-      function sendHeight(){
-        var h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-        if (window.parent) window.parent.postMessage({type:'calcHeight', height:h}, '*');
+      const $ = (id) => document.getElementById(id);
+
+      function toNum(v, fallback=0){
+        const n = parseFloat(String(v).replace(',', '.'));
+        return isFinite(n) ? n : fallback;
       }
-      window.addEventListener('load', sendHeight);
+
+      function fmt(n, digits=0){
+        return isFinite(n) ? n.toLocaleString('cs-CZ', { maximumFractionDigits: digits, minimumFractionDigits: digits }) : '–';
+      }
+
+      function recalc(){
+        const d = toNum($('diameter').value, NaN);      // mm
+        const h = toNum($('depth').value, NaN);         // mm
+        const cnt = Math.max(1, Math.round(toNum($('count').value, 1))); // ks
+        const rho = toNum($('density').value, 1.5);     // kg/l
+        const waste = Math.max(0, toNum($('waste').value, 10)); // %
+        const cart = Math.max(1, Math.round(toNum($('cartridge').value, 300))); // ml
+
+        // Kontrola vstupů
+        if (!isFinite(d) || !isFinite(h) || d <= 0 || h <= 0){
+          $('volMl').textContent = '–';
+          $('grams').textContent = '–';
+          $('cartridges').textContent = '–';
+          $('note').textContent = 'Zadejte kladné hodnoty pro Ø vrtáku a hloubku.';
+          return;
+        }
+
+        // Objem jednoho otvoru (l): π * (Ø/2)^2 * hloubka / 1e6
+        const vol_l_one = Math.PI * Math.pow(d/2, 2) * h / 1e6;
+
+        // Celkový objem pro všechny kotvy (l)
+        const vol_l_total = vol_l_one * cnt;
+
+        // Rezerva
+        const factor = 1 + (waste/100);
+        const vol_l_with_waste = vol_l_total * factor;
+
+        // Přepočty
+        const vol_ml = vol_l_with_waste * 1000;                 // ml
+        const grams_total = vol_l_with_waste * rho * 1000;      // g
+        const cartridges_needed = Math.ceil(vol_ml / cart);     // ks
+
+        $('volMl').textContent = fmt(vol_ml, vol_ml < 100 ? 1 : 0);
+        $('grams').textContent = fmt(grams_total, grams_total < 100 ? 1 : 0);
+        $('cartridges').textContent = fmt(cartridges_needed, 0);
+
+        $('note').textContent =
+          `Výpočet předpokládá válcový otvor a hustotu malty ${fmt(rho,2)} kg/l. ` +
+          `Zahrnuje rezervu ${fmt(waste,0)} % pro ztráty při vstřikování.`;
+
+        // Po každém přepočtu pošli výšku rodiči (aby iframe přesně seděl)
+        if (window.parent) sendHeight();
+      }
+
+      // --- PostMessage: posílání výšky rodiči + reakce na pingHeight ---
+      function pageHeight(){
+        return Math.max(
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight,
+          document.body ? document.body.scrollHeight : 0,
+          document.body ? document.body.offsetHeight : 0
+        );
+      }
+      function sendHeight(){
+        try {
+          window.parent.postMessage({ type:'calcHeight', height: pageHeight() }, '*');
+        } catch(e){ /* noop */ }
+      }
+      // Poslat po načtení a s malým zpožděním (kvůli fontům/layoutu)
+      window.addEventListener('load', function(){
+        sendHeight();
+        setTimeout(sendHeight, 0);
+        setTimeout(sendHeight, 400);
+        setTimeout(sendHeight, 1200);
+      });
+      // Odezva na ping z rodiče
+      window.addEventListener('message', function(e){
+        var d = e.data || {};
+        if (d.type === 'pingHeight') sendHeight();
+      });
+      // Reagovat na resize a změny layoutu
+      if (window.ResizeObserver){
+        var ro = new ResizeObserver(sendHeight);
+        ro.observe(document.documentElement);
+        if (document.body) ro.observe(document.body);
+      }
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(sendHeight);
       window.addEventListener('resize', sendHeight);
-      try { new ResizeObserver(sendHeight).observe(document.body); } catch(e){}
-      setTimeout(sendHeight, 300);
+
+      // Reakce na změny vstupů
+      ['diameter','depth','count','density','waste','cartridge'].forEach(id=>{
+        const el = document.getElementById(id);
+        el.addEventListener('input', recalc);
+        el.addEventListener('change', recalc);
+      });
+
+      // Inicializace
+      recalc();
     })();
   </script>
 </body>
