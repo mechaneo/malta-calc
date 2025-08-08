@@ -127,6 +127,13 @@
       // Helpers
       const $ = id => document.getElementById(id);
       const setOptions = (sel, arr) => { sel.innerHTML = arr.map(v => `<option>${v}</option>`).join(''); };
+      const preserveSelect = (sel, arr, prefer=null) => {
+        const prev = sel.value;
+        setOptions(sel, arr);
+        if (prefer && arr.includes(prefer)) sel.value = prefer;
+        else if (arr.includes(prev)) sel.value = prev;
+        else sel.selectedIndex = 0;
+      };
       const fmtMl = v => `${Math.round(v)} ml`;
       const fmtKs = v => `${Math.round(v)} ks`;
       const rodArea = d => Math.PI * Math.pow(d/2, 2); // mm^2
@@ -220,61 +227,52 @@
         'M24x170':{d0:25,h:190,V1:52000},
       };
 
-      function init() {
-        setOptions($('pouziti'), POUZITI);
-        setOptions($('kartuse'), Object.keys(KARTUSE));
-        $('pouziti').value = POUZITI[0];
-        updateUI();
-        calc();
-      }
-
-      function updateUI(){
+      function updateUI(trigger){
         const pouziti = $('pouziti').value;
         const sS = $('sroub'); const pS = $('prumer');
         const sitkoRow = $('sitkoRow'); const sitkoSel = $('sitko');
         const hI = $('hloubka');
 
-        // Defaulty
+        // Defaults
         sitkoRow.classList.add('hidden');
         sS.disabled = false;
         pS.disabled = false;
         hI.disabled = false;
 
         if (pouziti === 'Kotevní šroub v plném materiálu - bez sítka'){
-          setOptions(sS, Object.keys(SROUB_FULL));
-          const cur = sS.value || 'M8';
-          const d0 = SROUB_FULL[cur].d0;
-          setOptions(pS, [String(d0)]);
+          preserveSelect(sS, Object.keys(SROUB_FULL));
+          const d0 = SROUB_FULL[sS.value].d0;
+          preserveSelect(pS, [String(d0)]);
           pS.disabled = true;
 
         } else if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem'){
           sitkoRow.classList.remove('hidden');
-          setOptions(sitkoSel, SITKA);
-          const sit = SITKO_MAP[sitkoSel.value || SITKA[0]];
-          setOptions(sS, ['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24']);
-          sS.value = sit.sroub; sS.disabled = true;
-          setOptions(pS, [String(sit.d0)]); pS.disabled = true;
-          if (sit.L){ hI.disabled = false; } else { hI.disabled = true; $('hloubka').value = String(sit.h); }
+          preserveSelect(sitkoSel, SITKA);
+          const sit = SITKO_MAP[sitkoSel.value];
+          preserveSelect(sS, ['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24'], sit.sroub);
+          sS.disabled = true;
+          preserveSelect(pS, [String(sit.d0)]);
+          pS.disabled = true;
+          if (sit.L){ hI.disabled = false; } else { hI.disabled = true; hI.value = String(sit.h); }
 
         } else if (pouziti === 'Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
-          setOptions(sS, ['M8','M10','M12']);
-          setOptions(pS, []); pS.disabled = true;
-          // povolené hodnoty 75/95; když je jiná, nastav 75
-          const hv = String($('hloubka').value);
-          if (hv !== '75' && hv !== '95') { $('hloubka').value = '75'; }
+          preserveSelect(sS, ['M8','M10','M12']);
+          preserveSelect(pS, []);
+          pS.disabled = true;
+          if (hI.value !== '75' && hI.value !== '95') hI.value = '75';
 
         } else if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
-          setOptions(sS, Object.keys(POUZDRA));
-          const cur = sS.value || 'RG 8 x 75 M5 I';
-          const item = POUZDRA[cur];
-          setOptions(pS, [String(item.d0)]); pS.disabled = true;
-          $('hloubka').value = String(item.h); $('hloubka').disabled = true;
+          preserveSelect(sS, Object.keys(POUZDRA));
+          const item = POUZDRA[sS.value];
+          preserveSelect(pS, [String(item.d0)]);
+          pS.disabled = true;
+          hI.value = String(item.h); hI.disabled = true;
 
         } else if (pouziti === 'Betonářská výztuž'){
-          setOptions(sS, ['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40']);
-          const bar = sS.value || 'ø8';
+          const bars = ['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40'];
+          preserveSelect(sS, bars);
           let prOpts = [];
-          switch(bar){
+          switch(sS.value){
             case 'ø8':  prOpts = [10,12]; break;
             case 'ø10': prOpts = [12,14]; break;
             case 'ø12': prOpts = [14,16]; break;
@@ -292,22 +290,22 @@
             case 'ø36': prOpts = [45]; break;
             case 'ø40': prOpts = [55]; break;
           }
-          setOptions(pS, prOpts.map(String));
+          preserveSelect(pS, prOpts.map(String));
           pS.disabled = prOpts.length === 1;
 
         } else if (pouziti === 'FHB II-AL'){
-          setOptions(sS, Object.keys(FHB_AL));
-          const cur = sS.value || 'M8x60';
-          const it = FHB_AL[cur];
-          setOptions(pS, [String(it.d0)]); pS.disabled = true;
-          $('hloubka').value = String(it.h); $('hloubka').disabled = true;
+          preserveSelect(sS, Object.keys(FHB_AL));
+          const it = FHB_AL[sS.value];
+          preserveSelect(pS, [String(it.d0)]);
+          pS.disabled = true;
+          hI.value = String(it.h); hI.disabled = true;
 
         } else if (pouziti === 'FHB II-AS'){
-          setOptions(sS, Object.keys(FHB_AS));
-          const cur = sS.value || 'M10x60';
-          const it = FHB_AS[cur];
-          setOptions(pS, [String(it.d0)]); pS.disabled = true;
-          $('hloubka').value = String(it.h); $('hloubka').disabled = true;
+          preserveSelect(sS, Object.keys(FHB_AS));
+          const it = FHB_AS[sS.value];
+          preserveSelect(pS, [String(it.d0)]);
+          pS.disabled = true;
+          hI.value = String(it.h); hI.disabled = true;
         }
       }
 
@@ -386,21 +384,33 @@
         }
         $('objednavka').innerHTML = objednavka;
 
-        // výška pro rodiče
+        // výška pro rodiče (pokud je v iframe)
         try {
           const h = Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0);
           parent.postMessage({type:'calcHeight', height:h}, '*');
         } catch(e){}
       }
 
-      // Eventy
-      ['pouziti','sitko','sroub','prumer','hloubka','kotev','kartuse','rezerva'].forEach(id=>{
+      function init() {
+        // Nastavit výchozí volby
+        preserveSelect($('pouziti'), POUZITI);
+        preserveSelect($('kartuse'), Object.keys(KARTUSE));
+        $('pouziti').value = POUZITI[0];
+        updateUI('init');
+        calc();
+      }
+
+      // Eventy – updateUI jen když je to potřeba
+      $('pouziti').addEventListener('change', () => { updateUI('pouziti'); calc(); });
+      $('sitko').addEventListener('change', () => { updateUI('sitko'); calc(); });
+      $('sroub').addEventListener('change', () => { updateUI('sroub'); calc(); });
+      ['prumer','hloubka','kotev','kartuse','rezerva'].forEach(id=>{
         const el = $(id);
-        el.addEventListener('change', ()=>{ updateUI(); calc(); });
-        el.addEventListener('input',  ()=>{ if(id!=='pouziti') calc(); });
+        el.addEventListener('input', calc);
+        el.addEventListener('change', calc);
       });
 
-      // Inic.
+      // Init
       init();
     })();
   </script>
