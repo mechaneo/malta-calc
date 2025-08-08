@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Kalkulačka spotřeby chemické malty | Fischer</title>
   <meta name="description" content="Kalkulačka spotřeby chemické malty podle logiky výrobce Fischer. Výpočet objemu na 1 kotvu, celku s rezervou, počet kotev na 1 kartuši, počet kartuší + objednací čísla.">
+
   <style>
     html,body{margin:0;padding:0}
     body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#111;background:#fff;line-height:1.5}
     .wrap{max-width:980px;margin:0 auto;padding:16px}
-    h1,h2{color:#222;margin:24px 0 12px;line-height:1.25}
-    h2{font-size:1.4rem}
+    h2{color:#222;margin:24px 0 12px;line-height:1.25;font-size:1.4rem}
     p,li{margin-bottom:12px}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:860px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -25,15 +25,19 @@
     .stat{padding:12px;background:#f8f8f8;border-radius:8px;border:1px solid #eee}
     .stat .val{font-size:1.25rem;font-weight:700}
     .muted{color:#666;font-size:.92rem}
-    .warn{background:#fff7e6;border:1px solid #ffe2a8;padding:12px;border-radius:8px}
     .order{background:#f5f9ff;border:1px solid #d9e8ff;padding:12px;border-radius:8px}
     .hidden{display:none}
     .small{font-size:.9rem}
+    .order a{ text-decoration:none; border-bottom:1px dotted #6da2ff; }
+    .order a:hover{ border-bottom-style:solid; }
   </style>
+
+  <!-- DŮLEŽITÉ: Mapa kód → URL/Název, vygenerovaná z tvého Excelu -->
+  <script src="url-map.js"></script>
 </head>
 <body>
   <div class="wrap">
-    <!-- Bez H1 a úvodu – ty jsou v CMS -->
+    <!-- Bez H1/úvodu – ty máš v CMS -->
 
     <div class="card">
       <h2>Zadání</h2>
@@ -113,7 +117,7 @@
           <div id="objednavka" class="small muted">—</div>
         </div>
 
-        <p class="warn small" style="margin-top:12px">
+        <p class="muted small" style="margin-top:12px">
           <strong>Upozornění:</strong> dodržujte certifikované kotevní hloubky a technologické postupy dle technického listu. Skutečná spotřeba se může lišit vlivem podkladu a postupu montáže.
         </p>
       </div>
@@ -122,24 +126,30 @@
 
   <script>
     (function(){
+      // Helpers
       const $ = id => document.getElementById(id);
       const setOptions = (sel, arr) => { sel.innerHTML = arr.map(v => `<option>${v}</option>`).join(''); };
       const preserveSelect = (sel, arr, prefer=null) => {
-        const prev = sel.value; setOptions(sel, arr);
+        const prev = sel.value;
+        setOptions(sel, arr);
         if (prefer && arr.includes(prefer)) sel.value = prefer;
         else if (arr.includes(prev)) sel.value = prev;
         else sel.selectedIndex = 0;
       };
       const fmtMl = v => `${Math.round(v)} ml`;
       const fmtKs = v => `${Math.round(v)} ks`;
-      const rodArea = d => Math.PI * Math.pow(d/2, 2);
+      const rodArea = d => Math.PI * Math.pow(d/2, 2); // mm^2
+      const escapeHtml = (s='') => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+      // DATA podle vzoru výrobce
       const POUZITI = [
         'Kotevní šroub v plném materiálu - bez sítka',
         'Kotevní šroub v děrovaném zdivu - se sítkem',
         'Kotevní šroub v pórobetonu - kuželový otvor s PBB',
         'Kotevní pouzdro s vnitřním závitem',
-        'Betonářská výztuž','FHB II-AL','FHB II-AS'
+        'Betonářská výztuž',
+        'FHB II-AL',
+        'FHB II-AS'
       ];
 
       const KARTUSE = {
@@ -148,11 +158,11 @@
         'FIS VL 410': {V:390, cat:'538584'},
         'FIS VL HIGHSPEED 410': {V:390, cat:'538586'},
         'FIS V Zero': {V:280, cat:'562064'},
-        'FIS V 360': {V:340, cat:'43994'},
+        'FIS V 360': {V:340, cat:'43994'},     // POZOR: tento kód chybí v excelu – bude bez odkazu
         'FIS V Plus 360': {V:340, cat:'558762'},
-        'FIS VW 360': {V:340, cat:'43997'},
+        'FIS VW 360': {V:340, cat:'43997'},    // POZOR: chybí v excelu – bez odkazu
         'FIS VW Plus 360': {V:340, cat:'558768'},
-        'FIS P 300': {V:280, cat:'51061'},
+        'FIS P 300': {V:280, cat:'51061'},     // POZOR: chybí v excelu – bez odkazu
         'FIS EM Plus 390': {V:370, cat:'544176'},
         'FIS EM Plus 585': {V:565, cat:'544165'},
         'FIS EM Plus 1500': {V:1470, cat:'544167'},
@@ -161,45 +171,63 @@
         'FIS SB 585': {V:565, cat:'520526'},
       };
 
-      const SROUB_FULL = { 'M8':{d0:10,St:36.6}, 'M10':{d0:12,St:58}, 'M12':{d0:14,St:84.3}, 'M16':{d0:18,St:157}, 'M20':{d0:24,St:245}, 'M24':{d0:28,St:353}, 'M30':{d0:35,St:561} };
-
-      const SITKA = ['FIS H 12x50 K','FIS H 12x85 K','FIS H 16x85 K','FIS H 16x130 K','FIS H 20x85 K','FIS H 20x130 K','FIS H 20x200 K','FIS H 12x1000 L','FIS H 16x1000 L','FIS H 22x1000 L','UPM-SH 30X1000 L'];
-      const SITKO_MAP = {
-        'FIS H 12x50 K':{cat:'41900',d0:12,h:55,V1:10000,sroub:'M6-M8',L:false},
-        'FIS H 12x85 K':{cat:'41901',d0:12,h:90,V1:20000,sroub:'M6-M8',L:false},
-        'FIS H 16x85 K':{cat:'41902',d0:16,h:90,V1:24000,sroub:'M8-M10',L:false},
-        'FIS H 16x130 K':{cat:'41903',d0:16,h:135,V1:30000,sroub:'M8-M10',L:false},
-        'FIS H 20x85 K':{cat:'41904',d0:20,h:90,V1:30000,sroub:'M12-M16',L:false},
-        'FIS H 20x130 K':{cat:'46703',d0:20,h:135,V1:50000,sroub:'M12-M16',L:false},
-        'FIS H 20x200 K':{cat:'46704',d0:20,h:205,V1:80000,sroub:'M12-M16',L:false},
-        'FIS H 12x1000 L':{cat:'50598',d0:12,h:null,V1_per_mm:240,sroub:'M6-M8',L:true},
-        'FIS H 16x1000 L':{cat:'50599',d0:16,h:null,V1_per_mm:280,sroub:'M10-M12',L:true},
-        'FIS H 22x1000 L':{cat:'45301',d0:22,h:null,V1_per_mm:400,sroub:'M12-M16',L:true},
-        'UPM-SH 30X1000 L':{cat:'645',d0:30,h:null,V1_per_mm:520,sroub:'M16-M24',L:true},
+      const SROUB_FULL = { // plný materiál
+        'M8': {d0:10, St:36.6},
+        'M10':{d0:12, St:58},
+        'M12':{d0:14, St:84.3},
+        'M16':{d0:18, St:157},
+        'M20':{d0:24, St:245},
+        'M24':{d0:28, St:353},
+        'M30':{d0:35, St:561},
       };
 
-      const POUZDRA = {
-        'RG 8 x 75 M5 I':{cat:'48221',d0:10,h:75,V1:6000},
-        'RG 10 x 75 M6 I':{cat:'48222',d0:12,h:75,V1:6000},
-        'RG 12 x 90 M8 I':{cat:'50552',d0:14,h:90,V1:6000},
-        'RG 16 x 90 M10 I':{cat:'50553',d0:18,h:90,V1:8000},
-        'RG 18 x 125 M12 I':{cat:'50562',d0:20,h:125,V1:12000},
-        'RG 22 x 160 M16 I':{cat:'50563',d0:24,h:160,V1:16000},
-        'RG 28 x 200 M20 I':{cat:'50564',d0:32,h:200,V1:48000},
+      const SITKA = [
+        'FIS H 12x50 K','FIS H 12x85 K','FIS H 16x85 K','FIS H 16x130 K','FIS H 20x85 K','FIS H 20x130 K','FIS H 20x200 K',
+        'FIS H 12x1000 L','FIS H 16x1000 L','FIS H 22x1000 L','UPM-SH 30X1000 L'
+      ];
+      const SITKO_MAP = {
+        'FIS H 12x50 K':   {cat:'41900', d0:12, h:55,  V1:10000, sroub:'M6-M8', L:false},
+        'FIS H 12x85 K':   {cat:'41901', d0:12, h:90,  V1:20000, sroub:'M6-M8', L:false},
+        'FIS H 16x85 K':   {cat:'41902', d0:16, h:90,  V1:24000, sroub:'M8-M10', L:false},
+        'FIS H 16x130 K':  {cat:'41903', d0:16, h:135, V1:30000, sroub:'M8-M10', L:false},
+        'FIS H 20x85 K':   {cat:'41904', d0:20, h:90,  V1:30000, sroub:'M12-M16', L:false},
+        'FIS H 20x130 K':  {cat:'46703', d0:20, h:135, V1:50000, sroub:'M12-M16', L:false},
+        'FIS H 20x200 K':  {cat:'46704', d0:20, h:205, V1:80000, sroub:'M12-M16', L:false},
+        'FIS H 12x1000 L': {cat:'50598', d0:12, h:null, V1_per_mm:240,  sroub:'M6-M8',  L:true},
+        'FIS H 16x1000 L': {cat:'50599', d0:16, h:null, V1_per_mm:280,  sroub:'M10-M12', L:true},
+        'FIS H 22x1000 L': {cat:'45301', d0:22, h:null, V1_per_mm:400,  sroub:'M12-M16', L:true},
+        'UPM-SH 30X1000 L':{cat:'645',   d0:30, h:null, V1_per_mm:520,  sroub:'M16-M24', L:true},
+      };
+
+      const POUZDRA = { // RG pouzdra
+        'RG 8 x 75 M5 I':   {cat:'48221', d0:10, h:75,  V1:6000},
+        'RG 10 x 75 M6 I':  {cat:'48222', d0:12, h:75,  V1:6000},
+        'RG 12 x 90 M8 I':  {cat:'50552', d0:14, h:90,  V1:6000},
+        'RG 16 x 90 M10 I': {cat:'50553', d0:18, h:90,  V1:8000},
+        'RG 18 x 125 M12 I':{cat:'50562', d0:20, h:125, V1:12000},
+        'RG 22 x 160 M16 I':{cat:'50563', d0:24, h:160, V1:16000},
+        'RG 28 x 200 M20 I':{cat:'50564', d0:32, h:200, V1:48000},
       };
 
       const FHB_AL = {
-        'M8x60':{d0:10,h:75,V1:6000}, 'M10x95':{d0:12,h:110,V1:10000},
-        'M12x100':{d0:14,h:115,V1:14000}, 'M12x120':{d0:14,h:135,V1:14000},
-        'M16x125':{d0:18,h:140,V1:22000}, 'M16x145':{d0:18,h:160,V1:26000},
-        'M16x160':{d0:18,h:175,V1:26000}, 'M20x210':{d0:25,h:235,V1:66000},
-        'M24x210':{d0:25,h:235,V1:66000},
+        'M8x60':  {d0:10, h:75,  V1:6000},
+        'M10x95':{d0:12, h:110, V1:10000},
+        'M12x100':{d0:14,h:115, V1:14000},
+        'M12x120':{d0:14,h:135, V1:14000},
+        'M16x125':{d0:18,h:140, V1:22000},
+        'M16x145':{d0:18,h:160, V1:26000},
+        'M16x160':{d0:18,h:175, V1:26000},
+        'M20x210':{d0:25,h:235, V1:66000},
+        'M24x210':{d0:25,h:235, V1:66000},
       };
 
       const FHB_AS = {
-        'M10x60':{d0:10,h:75,V1:6000}, 'M10x75':{d0:10,h:90,V1:8000},
-        'M12x75':{d0:12,h:90,V1:8000}, 'M16x95':{d0:16,h:110,V1:16000},
-        'M20x170':{d0:25,h:190,V1:52000}, 'M24x170':{d0:25,h:190,V1:52000},
+        'M10x60':{d0:10,h:75,V1:6000},
+        'M10x75':{d0:10,h:90,V1:8000},
+        'M12x75':{d0:12,h:90,V1:8000},
+        'M16x95':{d0:16,h:110,V1:16000},
+        'M20x170':{d0:25,h:190,V1:52000},
+        'M24x170':{d0:25,h:190,V1:52000},
       };
 
       function updateUI(){
@@ -252,12 +280,25 @@
         }
       }
 
+      function linkFor(code, fallbackText){
+        // URL_MAP je načteno ze souboru url-map.js
+        const rec = (typeof URL_MAP !== 'undefined') ? URL_MAP[String(code)] : null;
+        if(rec && rec.url){
+          const name = rec.name && rec.name.trim() ? rec.name.trim() : fallbackText;
+          const text = escapeHtml(name);
+          const href = escapeHtml(rec.url);
+          return `<a href="${href}" target="_blank" rel="noopener" title="${text}">${text}</a>`;
+        }
+        return escapeHtml(fallbackText); // není v mapě → necháme jako text
+      }
+
       function calc(){
         const pouziti = $('pouziti').value;
         const hloubka = parseFloat($('hloubka').value) || 0;
         const kotev = Math.max(1, parseInt($('kotev').value,10) || 1);
         const rez = (parseInt($('rezerva').value,10) || 0) / 100 + 1;
-        const kText = $('kartuse').value; const kart = KARTUSE[kText];
+        const kText = $('kartuse').value;   // text názvu kartuše (např. FIS VL 300)
+        const kart = KARTUSE[kText];        // {V, cat}
         let V1_ml = 0, katalogSitko = '', sitekKs = 0;
 
         if (pouziti === 'Kotevní šroub v plném materiálu - bez sítka'){
@@ -294,11 +335,36 @@
         $('pocet').textContent  = fmtKs(pocet_na_kartusi);
         $('kartusi').textContent= fmtKs(kartusi_need);
 
-        let objed = (kartusi_need>0 ? `${kartusi_need}× ${kart.cat} ${kText}` : `${kText}`);
-        if (pouziti==='Kotevní šroub v děrovaném zdivu - se sítkem' && katalogSitko){ objed += `<br>${sitekKs}× ${katalogSitko} ${$('sitko').value}`; }
-        if (pouziti==='Kotevní pouzdro s vnitřním závitem'){ objed += `<br>${kotev}× ${katalogSitko} ${$('sroub').value}`; }
-        $('objednavka').innerHTML = objed;
+        // --- OBJE DNÁVKA s odkazy ---
+        // Kartuše
+        let objednavka = '';
+        if (kartusi_need>0){
+          const kartName = kText;         // text z dropdownu (FIS VL 300…)
+          const kartCode = kart.cat;      // katalogové číslo
+          const kartLink = linkFor(kartCode, kartName);
+          objednavka += `${kartusi_need}× ${kartLink} (${escapeHtml(kartCode)})`;
+        } else {
+          // Když zatím nic nevyšlo (prázdné vstupy), ukaž zvolený typ
+          const kartCode = kart.cat;
+          const kartLink = linkFor(kartCode, kText);
+          objednavka += `${kartLink} (${escapeHtml(kartCode)})`;
+        }
 
+        // Sítko (u děrovaného zdiva) nebo Pouzdro RG (podle použití)
+        if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem' && katalogSitko){
+          const sitName = $('sitko').value;
+          const sitLink = linkFor(katalogSitko, sitName);
+          objednavka += `<br>${sitekKs}× ${sitLink} (${escapeHtml(katalogSitko)})`;
+        }
+        if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
+          const it = POUZDRA[$('sroub').value];
+          const pouzLink = linkFor(it.cat, $('sroub').value);
+          objednavka += `<br>${kotev}× ${pouzLink} (${escapeHtml(it.cat)})`;
+        }
+
+        $('objednavka').innerHTML = objednavka;
+
+        // Výška pro rodiče (aby ve vloženém iframu nebyl vnitřní scroll ani mezera)
         try {
           const h = Math.max(document.documentElement.scrollHeight, document.body?document.body.scrollHeight:0);
           parent.postMessage({type:'calcHeight', height:h}, '*');
@@ -306,18 +372,21 @@
       }
 
       function init(){
+        // Dropdowny
         preserveSelect($('pouziti'), POUZITI);
         preserveSelect($('kartuse'), Object.keys(KARTUSE));
         $('pouziti').value = POUZITI[0];
+
+        // Události
+        $('pouziti').addEventListener('change', ()=>{ updateUI(); calc(); });
+        $('sitko').addEventListener('change',  ()=>{ updateUI(); calc(); });
+        $('sroub').addEventListener('change',  ()=>{ updateUI(); calc(); });
+        ['prumer','hloubka','kotev','kartuse','rezerva'].forEach(id=>{
+          const el = $(id); el.addEventListener('input', calc); el.addEventListener('change', calc);
+        });
+
         updateUI(); calc();
       }
-
-      $('pouziti').addEventListener('change', ()=>{ updateUI(); calc(); });
-      $('sitko').addEventListener('change', ()=>{ updateUI(); calc(); });
-      $('sroub').addEventListener('change', ()=>{ updateUI(); calc(); });
-      ['prumer','hloubka','kotev','kartuse','rezerva'].forEach(id=>{
-        const el = $(id); el.addEventListener('input', calc); el.addEventListener('change', calc);
-      });
 
       init();
     })();
