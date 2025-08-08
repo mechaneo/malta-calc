@@ -221,7 +221,6 @@
       };
 
       function init() {
-        // Nastavit výchozí volby
         setOptions($('pouziti'), POUZITI);
         setOptions($('kartuse'), Object.keys(KARTUSE));
         $('pouziti').value = POUZITI[0];
@@ -250,7 +249,7 @@
 
         } else if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem'){
           sitkoRow.classList.remove('hidden');
-          setOptions($('sitko'), SITKA);
+          setOptions(sitkoSel, SITKA);
           const sit = SITKO_MAP[sitkoSel.value || SITKA[0]];
           setOptions(sS, ['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24']);
           sS.value = sit.sroub; sS.disabled = true;
@@ -260,8 +259,9 @@
         } else if (pouziti === 'Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
           setOptions(sS, ['M8','M10','M12']);
           setOptions(pS, []); pS.disabled = true;
-          const hv = $('hloubka').value;
-          if (hv !== '75' and hv != '95'): pass
+          // povolené hodnoty 75/95; když je jiná, nastav 75
+          const hv = String($('hloubka').value);
+          if (hv !== '75' && hv !== '95') { $('hloubka').value = '75'; }
 
         } else if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
           setOptions(sS, Object.keys(POUZDRA));
@@ -319,7 +319,6 @@
         const kText = $('kartuse').value;
         const kart = KARTUSE[kText];
         let V1_ml = 0;
-        let objed = `${kotev} ks`;
         let katalogSitko = '';
         let sitekKs = 0;
 
@@ -366,20 +365,18 @@
           V1_ml = it.V1 / 1000;
         }
 
-        // Ochrana proti záporným / nulovým vstupům
+        // Ochrana
         if (!isFinite(V1_ml) || V1_ml <= 0){ V1_ml = 0; }
 
         const V_total_ml = kotev * V1_ml * rez;
         const pocet_na_kartusi = V1_ml > 0 ? (kart.V / V1_ml / rez) : 0;
         const kartusi_need = V1_ml > 0 ? Math.ceil(V_total_ml / kart.V) : 0;
 
-        // Výstupy
         $('objem1').textContent = fmtMl(V1_ml);
         $('objem').textContent  = fmtMl(V_total_ml);
         $('pocet').textContent  = fmtKs(pocet_na_kartusi);
         $('kartusi').textContent= fmtKs(kartusi_need);
 
-        // Objednávka
         let objednavka = (kartusi_need>0 ? `${kartusi_need}× ${kart.cat} ${kText}` : `${kText}`);
         if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem' && katalogSitko){
           objednavka += `<br>${sitekKs}× ${katalogSitko} ${$('sitko').value}`;
@@ -389,7 +386,7 @@
         }
         $('objednavka').innerHTML = objednavka;
 
-        // Pošli výšku rodiči (když je vloženo do iframe)
+        // výška pro rodiče
         try {
           const h = Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0);
           parent.postMessage({type:'calcHeight', height:h}, '*');
