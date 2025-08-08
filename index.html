@@ -4,15 +4,14 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Kalkulačka spotřeby chemické malty | Fischer</title>
-  <meta name="description" content="Výpočet spotřeby chemické malty podle vzoru výrobce – výsledkem je typ kartuše, počet kartuší a případně sítka/pouzdra.">
+  <meta name="description" content="Kalkulačka spotřeby chemické malty podle logiky výrobce Fischer. Výpočet objemu na 1 kotvu, celku s rezervou, počet kotev na 1 kartuši, počet kartuší + objednací čísla.">
   <style>
     html,body{margin:0;padding:0}
     body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#111;background:#fff;line-height:1.5}
     .wrap{max-width:980px;margin:0 auto;padding:16px}
-    h1,h2,h3{color:#222;margin:24px 0 12px;line-height:1.25}
+    h1,h2{color:#222;margin:24px 0 12px;line-height:1.25}
     h1{font-size:2rem}
-    h2{font-size:1.5rem}
-    h3{font-size:1.2rem}
+    h2{font-size:1.4rem}
     p,li{margin-bottom:12px}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:860px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -30,15 +29,13 @@
     .warn{background:#fff7e6;border:1px solid #ffe2a8;padding:12px;border-radius:8px}
     .order{background:#f5f9ff;border:1px solid #d9e8ff;padding:12px;border-radius:8px}
     .hidden{display:none}
-    .inline{display:flex;gap:12px;align-items:flex-end}
-    .inline>div{flex:1}
     .small{font-size:.9rem}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Kalkulačka spotřeby chemické malty</h1>
-    <p class="muted">Logika dle vzoru výrobce (Fischer): doporučí typ kartuše, spočítá objem, počet kotev na 1 kartuši a celkový počet kartuší. U některých použití dopočítá i počet sítek či pouzder.</p>
+    <p class="muted">Logika dle vzoru výrobce Fischer. Zvolte použití a parametry; výstupem je typ kartuše, počet kartuší a případné příslušenství (sítka/pouzdra).</p>
 
     <div class="card">
       <h2>Zadání</h2>
@@ -64,7 +61,7 @@
           <select id="prumer"></select>
         </div>
 
-        <div id="hloubkaCell">
+        <div>
           <label for="hloubka">Hloubka vrtání (mm)</label>
           <input id="hloubka" type="number" min="10" step="1" value="250"/>
         </div>
@@ -132,8 +129,9 @@
       const setOptions = (sel, arr) => { sel.innerHTML = arr.map(v => `<option>${v}</option>`).join(''); };
       const fmtMl = v => `${Math.round(v)} ml`;
       const fmtKs = v => `${Math.round(v)} ks`;
+      const rodArea = d => Math.PI * Math.pow(d/2, 2); // mm^2
 
-      // Data
+      // DATA podle vzoru výrobce
       const POUZITI = [
         'Kotevní šroub v plném materiálu - bez sítka',
         'Kotevní šroub v děrovaném zdivu - se sítkem',
@@ -163,6 +161,16 @@
         'FIS SB 585': {V:565, cat:'520526'},
       };
 
+      const SROUB_FULL = { // plný materiál
+        'M8': {d0:10, St:36.6},
+        'M10':{d0:12, St:58},
+        'M12':{d0:14, St:84.3},
+        'M16':{d0:18, St:157},
+        'M20':{d0:24, St:245},
+        'M24':{d0:28, St:353},
+        'M30':{d0:35, St:561},
+      };
+
       const SITKA = [
         'FIS H 12x50 K','FIS H 12x85 K','FIS H 16x85 K','FIS H 16x130 K','FIS H 20x85 K','FIS H 20x130 K','FIS H 20x200 K',
         'FIS H 12x1000 L','FIS H 16x1000 L','FIS H 22x1000 L','UPM-SH 30X1000 L'
@@ -181,212 +189,189 @@
         'UPM-SH 30X1000 L':{cat:'645',   d0:30, h:null, V1_per_mm:520,  sroub:'M16-M24', L:true},
       };
 
-      function rodArea(d){ // mm^2
-        const r = d/2;
-        return Math.PI*r*r;
-      }
+      const POUZDRA = { // RG pouzdra
+        'RG 8 x 75 M5 I':   {cat:'48221', d0:10, h:75,  V1:6000},
+        'RG 10 x 75 M6 I':  {cat:'48222', d0:12, h:75,  V1:6000},
+        'RG 12 x 90 M8 I':  {cat:'50552', d0:14, h:90,  V1:6000},
+        'RG 16 x 90 M10 I': {cat:'50553', d0:18, h:90,  V1:8000},
+        'RG 18 x 125 M12 I':{cat:'50562', d0:20, h:125, V1:12000},
+        'RG 22 x 160 M16 I':{cat:'50563', d0:24, h:160, V1:16000},
+        'RG 28 x 200 M20 I':{cat:'50564', d0:32, h:200, V1:48000},
+      };
 
-      function initSelectors(){
+      const FHB_AL = {
+        'M8x60':  {d0:10, h:75,  V1:6000},
+        'M10x95':{d0:12, h:110, V1:10000},
+        'M12x100':{d0:14,h:115, V1:14000},
+        'M12x120':{d0:14,h:135, V1:14000},
+        'M16x125':{d0:18,h:140, V1:22000},
+        'M16x145':{d0:18,h:160, V1:26000},
+        'M16x160':{d0:18,h:175, V1:26000},
+        'M20x210':{d0:25,h:235, V1:66000},
+        'M24x210':{d0:25,h:235, V1:66000},
+      };
+
+      const FHB_AS = {
+        'M10x60':{d0:10,h:75,V1:6000},
+        'M10x75':{d0:10,h:90,V1:8000},
+        'M12x75':{d0:12,h:90,V1:8000},
+        'M16x95':{d0:16,h:110,V1:16000},
+        'M20x170':{d0:25,h:190,V1:52000},
+        'M24x170':{d0:25,h:190,V1:52000},
+      };
+
+      function init() {
+        // Nastavit výchozí volby
         setOptions($('pouziti'), POUZITI);
         setOptions($('kartuse'), Object.keys(KARTUSE));
         $('pouziti').value = POUZITI[0];
-        process();
+        updateUI();
+        calc();
       }
 
-      function process(){
+      function updateUI(){
         const pouziti = $('pouziti').value;
-        const sroubSel = $('sroub');
-        const prumerSel = $('prumer');
-        const sitkoRow = $('sitkoRow');
-        const sitkoSel = $('sitko');
-        const hloubkaInput = $('hloubka');
-        const hloubkaCell = $('hloubkaCell');
+        const sS = $('sroub'); const pS = $('prumer');
+        const sitkoRow = $('sitkoRow'); const sitkoSel = $('sitko');
+        const hI = $('hloubka');
 
-        let V1_ml = 0; // objem malty na 1 kotvu (ml)
-        let d0 = null; // průměr vrtaného otvoru
-        let St = 0;    // průřez prvku mm^2 (pokud relevantní)
-        let hloubka = parseFloat(hloubkaInput.value) || 250;
+        // Defaulty
+        sitkoRow.classList.add('hidden');
+        sS.disabled = false;
+        pS.disabled = false;
+        hI.disabled = false;
+
+        if (pouziti === 'Kotevní šroub v plném materiálu - bez sítka'){
+          setOptions(sS, Object.keys(SROUB_FULL));
+          const cur = sS.value || 'M8';
+          const d0 = SROUB_FULL[cur].d0;
+          setOptions(pS, [String(d0)]);
+          pS.disabled = true;
+
+        } else if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem'){
+          sitkoRow.classList.remove('hidden');
+          setOptions($('sitko'), SITKA);
+          const sit = SITKO_MAP[sitkoSel.value || SITKA[0]];
+          setOptions(sS, ['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24']);
+          sS.value = sit.sroub; sS.disabled = true;
+          setOptions(pS, [String(sit.d0)]); pS.disabled = true;
+          if (sit.L){ hI.disabled = false; } else { hI.disabled = true; $('hloubka').value = String(sit.h); }
+
+        } else if (pouziti === 'Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
+          setOptions(sS, ['M8','M10','M12']);
+          setOptions(pS, []); pS.disabled = true;
+          const hv = $('hloubka').value;
+          if (hv !== '75' and hv != '95'): pass
+
+        } else if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
+          setOptions(sS, Object.keys(POUZDRA));
+          const cur = sS.value || 'RG 8 x 75 M5 I';
+          const item = POUZDRA[cur];
+          setOptions(pS, [String(item.d0)]); pS.disabled = true;
+          $('hloubka').value = String(item.h); $('hloubka').disabled = true;
+
+        } else if (pouziti === 'Betonářská výztuž'){
+          setOptions(sS, ['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40']);
+          const bar = sS.value || 'ø8';
+          let prOpts = [];
+          switch(bar){
+            case 'ø8':  prOpts = [10,12]; break;
+            case 'ø10': prOpts = [12,14]; break;
+            case 'ø12': prOpts = [14,16]; break;
+            case 'ø14': prOpts = [18]; break;
+            case 'ø16': prOpts = [20]; break;
+            case 'ø20': prOpts = [25]; break;
+            case 'ø22': prOpts = [30]; break;
+            case 'ø24': prOpts = [30]; break;
+            case 'ø25': prOpts = [30]; break;
+            case 'ø26': prOpts = [35]; break;
+            case 'ø28': prOpts = [35]; break;
+            case 'ø30': prOpts = [40]; break;
+            case 'ø32': prOpts = [40]; break;
+            case 'ø34': prOpts = [40]; break;
+            case 'ø36': prOpts = [45]; break;
+            case 'ø40': prOpts = [55]; break;
+          }
+          setOptions(pS, prOpts.map(String));
+          pS.disabled = prOpts.length === 1;
+
+        } else if (pouziti === 'FHB II-AL'){
+          setOptions(sS, Object.keys(FHB_AL));
+          const cur = sS.value || 'M8x60';
+          const it = FHB_AL[cur];
+          setOptions(pS, [String(it.d0)]); pS.disabled = true;
+          $('hloubka').value = String(it.h); $('hloubka').disabled = true;
+
+        } else if (pouziti === 'FHB II-AS'){
+          setOptions(sS, Object.keys(FHB_AS));
+          const cur = sS.value || 'M10x60';
+          const it = FHB_AS[cur];
+          setOptions(pS, [String(it.d0)]); pS.disabled = true;
+          $('hloubka').value = String(it.h); $('hloubka').disabled = true;
+        }
+      }
+
+      function calc(){
+        const pouziti = $('pouziti').value;
+        const hloubka = parseFloat($('hloubka').value) || 0;
+        const kotev = Math.max(1, parseInt($('kotev').value,10) || 1);
+        const rez = (parseInt($('rezerva').value,10) || 0) / 100 + 1;
+        const kText = $('kartuse').value;
+        const kart = KARTUSE[kText];
+        let V1_ml = 0;
+        let objed = `${kotev} ks`;
         let katalogSitko = '';
         let sitekKs = 0;
 
-        // Reset visibility
-        sitkoRow.classList.add('hidden');
-        hloubkaInput.disabled = false;
-        prumerSel.disabled = false;
+        if (pouziti === 'Kotevní šroub v plném materiálu - bez sítka'){
+          const s = SROUB_FULL[$('sroub').value];
+          const d0 = s.d0;
+          const Svrtu = rodArea(d0);
+          V1_ml = (Svrtu - s.St) * hloubka / 1000; // mm3 -> ml
 
-        switch(pouziti){
-          case 'Kotevní šroub v plném materiálu - bez sítka': {
-            const opts = ['M8','M10','M12','M16','M20','M24','M30'];
-            setOptions(sroubSel, opts);
-            const sroub = sroubSel.value || opts[0];
-            // Mapy
-            const map = {
-              'M8':{d0:10, St:36.6},
-              'M10':{d0:12, St:58},
-              'M12':{d0:14, St:84.3},
-              'M16':{d0:18, St:157},
-              'M20':{d0:24, St:245},
-              'M24':{d0:28, St:353},
-              'M30':{d0:35, St:561},
-            };
-            ({d0, St} = map[sroub]);
-            setOptions(prumerSel, [String(map[sroub].d0)]);
-            prumerSel.value = String(map[sroub].d0);
-            prumerSel.disabled = true;
-            // Výpočet
-            const Svrtu = rodArea(d0);
-            V1_ml = (Svrtu - St) * hloubka / 1000; // mm3 -> ml
-            break;
+        } else if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem'){
+          const sit = SITKO_MAP[$('sitko').value];
+          if (sit.L){ // trubka 1000 mm
+            const h = Math.max(1, Math.round(hloubka));
+            V1_ml = (sit.V1_per_mm * h) / 1000;
+            const perTube = Math.max(1, Math.floor(1000 / h));
+            sitekKs = Math.ceil(kotev / perTube);
+          } else {
+            V1_ml = sit.V1 / 1000;
+            sitekKs = kotev; // 1 sítko na kotvu
           }
-          case 'Kotevní šroub v děrovaném zdivu - se sítkem': {
-            sitkoRow.classList.remove('hidden');
-            setOptions(sroubSel, ['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24']);
-            sroubSel.disabled = true;
-            setOptions(sitkoSel, SITKA);
-            const sitko = SITKO_MAP[sitkoSel.value || SITKA[0]];
-            // Pro L typy je hloubka volitelná, jinak fixní
-            if(sitko.L){
-              hloubkaInput.disabled = false;
-              d0 = sitko.d0;
-              const h = parseFloat(hloubkaInput.value) || 250;
-              V1_ml = (sitko.V1_per_mm * h) / 1000; // (ml?) dle vzoru: nejprve "jednotky" a pak /1000 -> ml
-              hloubka = h;
-              // Počet sítek z jedné trubky 1000 mm
-              const kotev = Math.max(1, parseInt($('kotev').value,10)||1);
-              const perTube = Math.floor(1000 / h) || 1;
-              sitekKs = Math.ceil(kotev / perTube);
-            }else{
-              hloubkaInput.disabled = true;
-              d0 = sitko.d0;
-              hloubka = sitko.h;
-              V1_ml = sitko.V1 / 1000; // po dělení ml
-              sitekKs = Math.max(1, parseInt($('kotev').value,10)||1); // 1 sítko na kotvu
-            }
-            $('sroub').value = sitko.sroub;
-            setOptions(prumerSel, [String(d0)]);
-            prumerSel.disabled = true;
-            katalogSitko = sitko.cat;
-            $('hloubka').value = String(hloubka);
-            break;
-          }
-          case 'Kotevní šroub v pórobetonu - kuželový otvor s PBB': {
-            setOptions(sroubSel, ['M8','M10','M12']);
-            setOptions(prumerSel, []); // skryto – nepoužívá se
-            prumerSel.disabled = true;
-            // hloubka je výběr 75/95
-            const hOpts = ['75','95'];
-            // Pokud aktuální hloubka není 75/95, nastavíme 75
-            if (hOpts.indexOf(String(hloubka)) === -1) { hloubka = 75; $('hloubka').value = '75'; }
-            V1_ml = (String(hloubka) === '75' ? 30000 : 40000) / 1000;
-            break;
-          }
-          case 'Kotevní pouzdro s vnitřním závitem': {
-            const opts = ['RG 8 x 75 M5 I','RG 10 x 75 M6 I','RG 12 x 90 M8 I','RG 16 x 90 M10 I','RG 18 x 125 M12 I','RG 22 x 160 M16 I','RG 28 x 200 M20 I'];
-            setOptions(sroubSel, opts);
-            const map = {
-              'RG 8 x 75 M5 I':  {cat:'48221', d0:10, h:75,  V1:6000},
-              'RG 10 x 75 M6 I': {cat:'48222', d0:12, h:75,  V1:6000},
-              'RG 12 x 90 M8 I': {cat:'50552', d0:14, h:90,  V1:6000},
-              'RG 16 x 90 M10 I':{cat:'50553', d0:18, h:90,  V1:8000},
-              'RG 18 x 125 M12 I':{cat:'50562',d0:20, h:125, V1:12000},
-              'RG 22 x 160 M16 I':{cat:'50563',d0:24, h:160, V1:16000},
-              'RG 28 x 200 M20 I':{cat:'50564',d0:32, h:200, V1:48000},
-            };
-            const s = map[sroubSel.value || opts[0]];
-            d0 = s.d0; hloubka = s.h; V1_ml = s.V1/1000;
-            setOptions(prumerSel, [String(d0)]); prumerSel.disabled = true;
-            $('hloubka').value = String(hloubka); $('hloubka').disabled = true;
-            katalogSitko = s.cat; // pro text objednávky – jedná se o pouzdro
-            break;
-          }
-          case 'Betonářská výztuž': {
-            const opts = ['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40'];
-            setOptions(sroubSel, opts);
-            const bar = sroubSel.value || opts[0];
-            // Výběr průměru otvoru dle průměru výztuže
-            let prumerOpts = null;
-            switch(bar){
-              case 'ø8':  prumerOpts = [10,12]; break;
-              case 'ø10': prumerOpts = [12,14]; break;
-              case 'ø12': prumerOpts = [14,16]; break;
-              case 'ø14': prumerOpts = [18]; break;
-              case 'ø16': prumerOpts = [20]; break;
-              case 'ø20': prumerOpts = [25]; break;
-              case 'ø22': prumerOpts = [30]; break;
-              case 'ø24': prumerOpts = [30]; break;
-              case 'ø25': prumerOpts = [30]; break;
-              case 'ø26': prumerOpts = [35]; break;
-              case 'ø28': prumerOpts = [35]; break;
-              case 'ø30': prumerOpts = [40]; break;
-              case 'ø32': prumerOpts = [40]; break;
-              case 'ø34': prumerOpts = [40]; break;
-              case 'ø36': prumerOpts = [45]; break;
-              case 'ø40': prumerOpts = [55]; break;
-            }
-            setOptions(prumerSel, prumerOpts.map(String));
-            prumerSel.disabled = prumerOpts.length === 1;
-            d0 = parseFloat(prumerSel.value || prumerOpts[0]);
-            // plocha výztuže (mm2) – přesně podle kruhu
-            const dia = parseFloat(bar.replace('ø','')) || 8;
-            St = rodArea(dia);
-            V1_ml = (rodArea(d0) - St) * hloubka / 1000;
-            break;
-          }
-          case 'FHB II-AL': {
-            const opts = ['M8x60','M10x95','M12x100','M12x120','M16x125','M16x145','M16x160','M20x210','M24x210'];
-            setOptions(sroubSel, opts);
-            const map = {
-              'M8x60':  {d0:10, h:75,  V1:6000},
-              'M10x95':{d0:12, h:110, V1:10000},
-              'M12x100':{d0:14,h:115, V1:14000},
-              'M12x120':{d0:14,h:135, V1:14000},
-              'M16x125':{d0:18,h:140, V1:22000},
-              'M16x145':{d0:18,h:160, V1:26000},
-              'M16x160':{d0:18,h:175, V1:26000},
-              'M20x210':{d0:25,h:235, V1:66000},
-              'M24x210':{d0:25,h:235, V1:66000},
-            };
-            const s = map[sroubSel.value || opts[0]];
-            d0 = s.d0; hloubka = s.h; V1_ml = s.V1/1000;
-            setOptions(prumerSel, [String(d0)]); prumerSel.disabled = true;
-            $('hloubka').disabled = true; $('hloubka').value = String(hloubka);
-            break;
-          }
-          case 'FHB II-AS': {
-            const opts = ['M10x60','M10x75','M12x75','M16x95','M20x170','M24x170'];
-            setOptions(sroubSel, opts);
-            const map = {
-              'M10x60':{d0:10,h:75,V1:6000},
-              'M10x75':{d0:10,h:90,V1:8000},
-              'M12x75':{d0:12,h:90,V1:8000},
-              'M16x95':{d0:16,h:110,V1:16000},
-              'M20x170':{d0:25,h:190,V1:52000},
-              'M24x170':{d0:25,h:190,V1:52000},
-            };
-            const s = map[sroubSel.value || opts[0]];
-            d0 = s.d0; hloubka = s.h; V1_ml = s.V1/1000;
-            setOptions(prumerSel, [String(d0)]); prumerSel.disabled = true;
-            $('hloubka').disabled = true; $('hloubka').value = String(hloubka);
-            break;
-          }
+          katalogSitko = sit.cat;
+
+        } else if (pouziti === 'Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
+          V1_ml = (String(hloubka) === '95' ? 40000 : 30000) / 1000;
+
+        } else if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
+          const it = POUZDRA[$('sroub').value];
+          V1_ml = it.V1 / 1000;
+          katalogSitko = it.cat;
+
+        } else if (pouziti === 'Betonářská výztuž'){
+          const bar = $('sroub').value;
+          const d0 = parseFloat($('prumer').value);
+          const dia = parseFloat(bar.replace('ø','')) || 8;
+          const St = rodArea(dia);
+          V1_ml = (rodArea(d0) - St) * hloubka / 1000;
+
+        } else if (pouziti === 'FHB II-AL'){
+          const it = FHB_AL[$('sroub').value];
+          V1_ml = it.V1 / 1000;
+
+        } else if (pouziti === 'FHB II-AS'){
+          const it = FHB_AS[$('sroub').value];
+          V1_ml = it.V1 / 1000;
         }
 
-        // Rezerva
-        const rezervaText = $('rezerva').value;
-        const rez = parseInt(rezervaText,10) / 100 + 1;
+        // Ochrana proti záporným / nulovým vstupům
+        if (!isFinite(V1_ml) || V1_ml <= 0){ V1_ml = 0; }
 
-        // Kartuše
-        const kartuseText = $('kartuse').value || Object.keys(KARTUSE)[0];
-        const kart = KARTUSE[kartuseText];
-        const Vkart_ml = kart.V;
-
-        // Počet kotev
-        const kotev = Math.max(1, parseInt($('kotev').value,10) || 1);
-
-        // Výpočty
         const V_total_ml = kotev * V1_ml * rez;
-        const pocet_na_kartusi = Vkart_ml / V1_ml / rez;
-        const kartusi_need = Math.ceil(V_total_ml / Vkart_ml);
+        const pocet_na_kartusi = V1_ml > 0 ? (kart.V / V1_ml / rez) : 0;
+        const kartusi_need = V1_ml > 0 ? Math.ceil(V_total_ml / kart.V) : 0;
 
         // Výstupy
         $('objem1').textContent = fmtMl(V1_ml);
@@ -395,37 +380,31 @@
         $('kartusi').textContent= fmtKs(kartusi_need);
 
         // Objednávka
-        let objed = `${kartusi_need}× ${kart.cat} ${kartuseText}`;
-        if (POUZITI.indexOf(pouziti) === 1){ // děrované zdivo
-          if (katalogSitko) objed += `<br>${sitekKs}× ${katalogSitko} ${$('sitko').value}`;
+        let objednavka = (kartusi_need>0 ? `${kartusi_need}× ${kart.cat} ${kText}` : `${kText}`);
+        if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem' && katalogSitko){
+          objednavka += `<br>${sitekKs}× ${katalogSitko} ${$('sitko').value}`;
         }
         if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
-          objed += `<br>${kotev}× ${katalogSitko} ${$('sroub').value}`;
+          objednavka += `<br>${kotev}× ${katalogSitko} ${$('sroub').value}`;
         }
-        $('objednavka').innerHTML = objed;
+        $('objednavka').innerHTML = objednavka;
 
-        // Zpět do rodiče pro auto-height (pokud ho rodič umí)
-        if (window.parent) {
-          try {
-            const h = Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0);
-            parent.postMessage({type:'calcHeight', height:h}, '*');
-          } catch(e){}
-        }
+        // Pošli výšku rodiči (když je vloženo do iframe)
+        try {
+          const h = Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0);
+          parent.postMessage({type:'calcHeight', height:h}, '*');
+        } catch(e){}
       }
 
-      // Events
+      // Eventy
       ['pouziti','sitko','sroub','prumer','hloubka','kotev','kartuse','rezerva'].forEach(id=>{
         const el = $(id);
-        if(el){ el.addEventListener('change', process); el.addEventListener('input', process); }
+        el.addEventListener('change', ()=>{ updateUI(); calc(); });
+        el.addEventListener('input',  ()=>{ if(id!=='pouziti') calc(); });
       });
 
-      // Init options
-      (function init(){
-        initSelectors();
-        // Defaults per initial selection
-        // For děrované zdivo – need sitko list etc. But defaults handled in process()
-        process();
-      })();
+      // Inic.
+      init();
     })();
   </script>
 </body>
