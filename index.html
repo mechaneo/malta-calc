@@ -10,7 +10,6 @@
     body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#111;background:#fff;line-height:1.5}
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     h1,h2{color:#222;margin:24px 0 12px;line-height:1.25}
-    h1{font-size:2rem}
     h2{font-size:1.4rem}
     p,li{margin-bottom:12px}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
@@ -34,8 +33,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Kalkulačka spotřeby chemické malty</h1>
-    <p class="muted">Zvolte použití a parametry; výstupem je typ kartuše, počet kartuší a případné příslušenství (sítka/pouzdra).</p>
+    <!-- Bez H1 a úvodu – ty jsou v CMS -->
 
     <div class="card">
       <h2>Zadání</h2>
@@ -124,29 +122,24 @@
 
   <script>
     (function(){
-      // Helpers
       const $ = id => document.getElementById(id);
       const setOptions = (sel, arr) => { sel.innerHTML = arr.map(v => `<option>${v}</option>`).join(''); };
       const preserveSelect = (sel, arr, prefer=null) => {
-        const prev = sel.value;
-        setOptions(sel, arr);
+        const prev = sel.value; setOptions(sel, arr);
         if (prefer && arr.includes(prefer)) sel.value = prefer;
         else if (arr.includes(prev)) sel.value = prev;
         else sel.selectedIndex = 0;
       };
       const fmtMl = v => `${Math.round(v)} ml`;
       const fmtKs = v => `${Math.round(v)} ks`;
-      const rodArea = d => Math.PI * Math.pow(d/2, 2); // mm^2
+      const rodArea = d => Math.PI * Math.pow(d/2, 2);
 
-      // DATA podle vzoru výrobce
       const POUZITI = [
         'Kotevní šroub v plném materiálu - bez sítka',
         'Kotevní šroub v děrovaném zdivu - se sítkem',
         'Kotevní šroub v pórobetonu - kuželový otvor s PBB',
         'Kotevní pouzdro s vnitřním závitem',
-        'Betonářská výztuž',
-        'FHB II-AL',
-        'FHB II-AS'
+        'Betonářská výztuž','FHB II-AL','FHB II-AS'
       ];
 
       const KARTUSE = {
@@ -168,144 +161,94 @@
         'FIS SB 585': {V:565, cat:'520526'},
       };
 
-      const SROUB_FULL = { // plný materiál
-        'M8': {d0:10, St:36.6},
-        'M10':{d0:12, St:58},
-        'M12':{d0:14, St:84.3},
-        'M16':{d0:18, St:157},
-        'M20':{d0:24, St:245},
-        'M24':{d0:28, St:353},
-        'M30':{d0:35, St:561},
-      };
+      const SROUB_FULL = { 'M8':{d0:10,St:36.6}, 'M10':{d0:12,St:58}, 'M12':{d0:14,St:84.3}, 'M16':{d0:18,St:157}, 'M20':{d0:24,St:245}, 'M24':{d0:28,St:353}, 'M30':{d0:35,St:561} };
 
-      const SITKA = [
-        'FIS H 12x50 K','FIS H 12x85 K','FIS H 16x85 K','FIS H 16x130 K','FIS H 20x85 K','FIS H 20x130 K','FIS H 20x200 K',
-        'FIS H 12x1000 L','FIS H 16x1000 L','FIS H 22x1000 L','UPM-SH 30X1000 L'
-      ];
+      const SITKA = ['FIS H 12x50 K','FIS H 12x85 K','FIS H 16x85 K','FIS H 16x130 K','FIS H 20x85 K','FIS H 20x130 K','FIS H 20x200 K','FIS H 12x1000 L','FIS H 16x1000 L','FIS H 22x1000 L','UPM-SH 30X1000 L'];
       const SITKO_MAP = {
-        'FIS H 12x50 K':   {cat:'41900', d0:12, h:55,  V1:10000, sroub:'M6-M8', L:false},
-        'FIS H 12x85 K':   {cat:'41901', d0:12, h:90,  V1:20000, sroub:'M6-M8', L:false},
-        'FIS H 16x85 K':   {cat:'41902', d0:16, h:90,  V1:24000, sroub:'M8-M10', L:false},
-        'FIS H 16x130 K':  {cat:'41903', d0:16, h:135, V1:30000, sroub:'M8-M10', L:false},
-        'FIS H 20x85 K':   {cat:'41904', d0:20, h:90,  V1:30000, sroub:'M12-M16', L:false},
-        'FIS H 20x130 K':  {cat:'46703', d0:20, h:135, V1:50000, sroub:'M12-M16', L:false},
-        'FIS H 20x200 K':  {cat:'46704', d0:20, h:205, V1:80000, sroub:'M12-M16', L:false},
-        'FIS H 12x1000 L': {cat:'50598', d0:12, h:null, V1_per_mm:240,  sroub:'M6-M8',  L:true},
-        'FIS H 16x1000 L': {cat:'50599', d0:16, h:null, V1_per_mm:280,  sroub:'M10-M12', L:true},
-        'FIS H 22x1000 L': {cat:'45301', d0:22, h:null, V1_per_mm:400,  sroub:'M12-M16', L:true},
-        'UPM-SH 30X1000 L':{cat:'645',   d0:30, h:null, V1_per_mm:520,  sroub:'M16-M24', L:true},
+        'FIS H 12x50 K':{cat:'41900',d0:12,h:55,V1:10000,sroub:'M6-M8',L:false},
+        'FIS H 12x85 K':{cat:'41901',d0:12,h:90,V1:20000,sroub:'M6-M8',L:false},
+        'FIS H 16x85 K':{cat:'41902',d0:16,h:90,V1:24000,sroub:'M8-M10',L:false},
+        'FIS H 16x130 K':{cat:'41903',d0:16,h:135,V1:30000,sroub:'M8-M10',L:false},
+        'FIS H 20x85 K':{cat:'41904',d0:20,h:90,V1:30000,sroub:'M12-M16',L:false},
+        'FIS H 20x130 K':{cat:'46703',d0:20,h:135,V1:50000,sroub:'M12-M16',L:false},
+        'FIS H 20x200 K':{cat:'46704',d0:20,h:205,V1:80000,sroub:'M12-M16',L:false},
+        'FIS H 12x1000 L':{cat:'50598',d0:12,h:null,V1_per_mm:240,sroub:'M6-M8',L:true},
+        'FIS H 16x1000 L':{cat:'50599',d0:16,h:null,V1_per_mm:280,sroub:'M10-M12',L:true},
+        'FIS H 22x1000 L':{cat:'45301',d0:22,h:null,V1_per_mm:400,sroub:'M12-M16',L:true},
+        'UPM-SH 30X1000 L':{cat:'645',d0:30,h:null,V1_per_mm:520,sroub:'M16-M24',L:true},
       };
 
-      const POUZDRA = { // RG pouzdra
-        'RG 8 x 75 M5 I':   {cat:'48221', d0:10, h:75,  V1:6000},
-        'RG 10 x 75 M6 I':  {cat:'48222', d0:12, h:75,  V1:6000},
-        'RG 12 x 90 M8 I':  {cat:'50552', d0:14, h:90,  V1:6000},
-        'RG 16 x 90 M10 I': {cat:'50553', d0:18, h:90,  V1:8000},
-        'RG 18 x 125 M12 I':{cat:'50562', d0:20, h:125, V1:12000},
-        'RG 22 x 160 M16 I':{cat:'50563', d0:24, h:160, V1:16000},
-        'RG 28 x 200 M20 I':{cat:'50564', d0:32, h:200, V1:48000},
+      const POUZDRA = {
+        'RG 8 x 75 M5 I':{cat:'48221',d0:10,h:75,V1:6000},
+        'RG 10 x 75 M6 I':{cat:'48222',d0:12,h:75,V1:6000},
+        'RG 12 x 90 M8 I':{cat:'50552',d0:14,h:90,V1:6000},
+        'RG 16 x 90 M10 I':{cat:'50553',d0:18,h:90,V1:8000},
+        'RG 18 x 125 M12 I':{cat:'50562',d0:20,h:125,V1:12000},
+        'RG 22 x 160 M16 I':{cat:'50563',d0:24,h:160,V1:16000},
+        'RG 28 x 200 M20 I':{cat:'50564',d0:32,h:200,V1:48000},
       };
 
       const FHB_AL = {
-        'M8x60':  {d0:10, h:75,  V1:6000},
-        'M10x95':{d0:12, h:110, V1:10000},
-        'M12x100':{d0:14,h:115, V1:14000},
-        'M12x120':{d0:14,h:135, V1:14000},
-        'M16x125':{d0:18,h:140, V1:22000},
-        'M16x145':{d0:18,h:160, V1:26000},
-        'M16x160':{d0:18,h:175, V1:26000},
-        'M20x210':{d0:25,h:235, V1:66000},
-        'M24x210':{d0:25,h:235, V1:66000},
+        'M8x60':{d0:10,h:75,V1:6000}, 'M10x95':{d0:12,h:110,V1:10000},
+        'M12x100':{d0:14,h:115,V1:14000}, 'M12x120':{d0:14,h:135,V1:14000},
+        'M16x125':{d0:18,h:140,V1:22000}, 'M16x145':{d0:18,h:160,V1:26000},
+        'M16x160':{d0:18,h:175,V1:26000}, 'M20x210':{d0:25,h:235,V1:66000},
+        'M24x210':{d0:25,h:235,V1:66000},
       };
 
       const FHB_AS = {
-        'M10x60':{d0:10,h:75,V1:6000},
-        'M10x75':{d0:10,h:90,V1:8000},
-        'M12x75':{d0:12,h:90,V1:8000},
-        'M16x95':{d0:16,h:110,V1:16000},
-        'M20x170':{d0:25,h:190,V1:52000},
-        'M24x170':{d0:25,h:190,V1:52000},
+        'M10x60':{d0:10,h:75,V1:6000}, 'M10x75':{d0:10,h:90,V1:8000},
+        'M12x75':{d0:12,h:90,V1:8000}, 'M16x95':{d0:16,h:110,V1:16000},
+        'M20x170':{d0:25,h:190,V1:52000}, 'M24x170':{d0:25,h:190,V1:52000},
       };
 
-      function updateUI(trigger){
+      function updateUI(){
         const pouziti = $('pouziti').value;
-        const sS = $('sroub'); const pS = $('prumer');
-        const sitkoRow = $('sitkoRow'); const sitkoSel = $('sitko');
+        const sS = $('sroub'), pS = $('prumer');
+        const sitkoRow = $('sitkoRow'), sitkoSel = $('sitko');
         const hI = $('hloubka');
 
-        // Defaults
         sitkoRow.classList.add('hidden');
-        sS.disabled = false;
-        pS.disabled = false;
-        hI.disabled = false;
+        sS.disabled = pS.disabled = hI.disabled = false;
 
         if (pouziti === 'Kotevní šroub v plném materiálu - bez sítka'){
           preserveSelect(sS, Object.keys(SROUB_FULL));
-          const d0 = SROUB_FULL[sS.value].d0;
-          preserveSelect(pS, [String(d0)]);
-          pS.disabled = true;
+          preserveSelect(pS, [String(SROUB_FULL[sS.value].d0)]); pS.disabled = true;
 
         } else if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem'){
-          sitkoRow.classList.remove('hidden');
-          preserveSelect(sitkoSel, SITKA);
+          sitkoRow.classList.remove('hidden'); preserveSelect(sitkoSel, SITKA);
           const sit = SITKO_MAP[sitkoSel.value];
           preserveSelect(sS, ['M6-M8','M8-M10','M10-M12','M12-M16','M16','M16-M24'], sit.sroub);
-          sS.disabled = true;
-          preserveSelect(pS, [String(sit.d0)]);
-          pS.disabled = true;
+          sS.disabled = true; preserveSelect(pS, [String(sit.d0)]); pS.disabled = true;
           if (sit.L){ hI.disabled = false; } else { hI.disabled = true; hI.value = String(sit.h); }
 
         } else if (pouziti === 'Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
-          preserveSelect(sS, ['M8','M10','M12']);
-          preserveSelect(pS, []);
-          pS.disabled = true;
+          preserveSelect(sS, ['M8','M10','M12']); preserveSelect(pS, []); pS.disabled = true;
           if (hI.value !== '75' && hI.value !== '95') hI.value = '75';
 
         } else if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
-          preserveSelect(sS, Object.keys(POUZDRA));
-          const item = POUZDRA[sS.value];
-          preserveSelect(pS, [String(item.d0)]);
-          pS.disabled = true;
-          hI.value = String(item.h); hI.disabled = true;
+          preserveSelect(sS, Object.keys(POUZDRA)); const it = POUZDRA[sS.value];
+          preserveSelect(pS, [String(it.d0)]); pS.disabled = true; hI.value = String(it.h); hI.disabled = true;
 
         } else if (pouziti === 'Betonářská výztuž'){
           const bars = ['ø8','ø10','ø12','ø14','ø16','ø20','ø22','ø24','ø25','ø26','ø28','ø30','ø32','ø34','ø36','ø40'];
           preserveSelect(sS, bars);
-          let prOpts = [];
-          switch(sS.value){
-            case 'ø8':  prOpts = [10,12]; break;
-            case 'ø10': prOpts = [12,14]; break;
-            case 'ø12': prOpts = [14,16]; break;
-            case 'ø14': prOpts = [18]; break;
-            case 'ø16': prOpts = [20]; break;
-            case 'ø20': prOpts = [25]; break;
-            case 'ø22': prOpts = [30]; break;
-            case 'ø24': prOpts = [30]; break;
-            case 'ø25': prOpts = [30]; break;
-            case 'ø26': prOpts = [35]; break;
-            case 'ø28': prOpts = [35]; break;
-            case 'ø30': prOpts = [40]; break;
-            case 'ø32': prOpts = [40]; break;
-            case 'ø34': prOpts = [40]; break;
-            case 'ø36': prOpts = [45]; break;
-            case 'ø40': prOpts = [55]; break;
+          let pr = []; switch(sS.value){
+            case 'ø8':pr=[10,12];break; case 'ø10':pr=[12,14];break; case 'ø12':pr=[14,16];break;
+            case 'ø14':pr=[18];break; case 'ø16':pr=[20];break; case 'ø20':pr=[25];break;
+            case 'ø22':pr=[30];break; case 'ø24':pr=[30];break; case 'ø25':pr=[30];break;
+            case 'ø26':pr=[35];break; case 'ø28':pr=[35];break; case 'ø30':pr=[40];break;
+            case 'ø32':pr=[40];break; case 'ø34':pr=[40];break; case 'ø36':pr=[45];break; case 'ø40':pr=[55];break;
           }
-          preserveSelect(pS, prOpts.map(String));
-          pS.disabled = prOpts.length === 1;
+          preserveSelect(pS, pr.map(String)); pS.disabled = pr.length === 1;
 
         } else if (pouziti === 'FHB II-AL'){
-          preserveSelect(sS, Object.keys(FHB_AL));
-          const it = FHB_AL[sS.value];
-          preserveSelect(pS, [String(it.d0)]);
-          pS.disabled = true;
-          hI.value = String(it.h); hI.disabled = true;
+          preserveSelect(sS, Object.keys(FHB_AL)); const it = FHB_AL[sS.value];
+          preserveSelect(pS, [String(it.d0)]); pS.disabled = true; hI.value = String(it.h); hI.disabled = true;
 
         } else if (pouziti === 'FHB II-AS'){
-          preserveSelect(sS, Object.keys(FHB_AS));
-          const it = FHB_AS[sS.value];
-          preserveSelect(pS, [String(it.d0)]);
-          pS.disabled = true;
-          hI.value = String(it.h); hI.disabled = true;
+          preserveSelect(sS, Object.keys(FHB_AS)); const it = FHB_AS[sS.value];
+          preserveSelect(pS, [String(it.d0)]); pS.disabled = true; hI.value = String(it.h); hI.disabled = true;
         }
       }
 
@@ -314,103 +257,68 @@
         const hloubka = parseFloat($('hloubka').value) || 0;
         const kotev = Math.max(1, parseInt($('kotev').value,10) || 1);
         const rez = (parseInt($('rezerva').value,10) || 0) / 100 + 1;
-        const kText = $('kartuse').value;
-        const kart = KARTUSE[kText];
-        let V1_ml = 0;
-        let katalogSitko = '';
-        let sitekKs = 0;
+        const kText = $('kartuse').value; const kart = KARTUSE[kText];
+        let V1_ml = 0, katalogSitko = '', sitekKs = 0;
 
         if (pouziti === 'Kotevní šroub v plném materiálu - bez sítka'){
           const s = SROUB_FULL[$('sroub').value];
-          const d0 = s.d0;
-          const Svrtu = rodArea(d0);
-          V1_ml = (Svrtu - s.St) * hloubka / 1000; // mm3 -> ml
+          V1_ml = ( (Math.PI*Math.pow(s.d0/2,2)) - s.St ) * hloubka / 1000;
 
         } else if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem'){
           const sit = SITKO_MAP[$('sitko').value];
-          if (sit.L){ // trubka 1000 mm
-            const h = Math.max(1, Math.round(hloubka));
-            V1_ml = (sit.V1_per_mm * h) / 1000;
-            const perTube = Math.max(1, Math.floor(1000 / h));
-            sitekKs = Math.ceil(kotev / perTube);
-          } else {
-            V1_ml = sit.V1 / 1000;
-            sitekKs = kotev; // 1 sítko na kotvu
-          }
+          if (sit.L){ const h = Math.max(1, Math.round(hloubka)); V1_ml = (sit.V1_per_mm*h)/1000; const per = Math.max(1, Math.floor(1000/h)); sitekKs = Math.ceil(kotev/per); }
+          else { V1_ml = sit.V1/1000; sitekKs = kotev; }
           katalogSitko = sit.cat;
 
         } else if (pouziti === 'Kotevní šroub v pórobetonu - kuželový otvor s PBB'){
-          V1_ml = (String(hloubka) === '95' ? 40000 : 30000) / 1000;
+          V1_ml = (String(hloubka)==='95' ? 40000 : 30000)/1000;
 
         } else if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
-          const it = POUZDRA[$('sroub').value];
-          V1_ml = it.V1 / 1000;
-          katalogSitko = it.cat;
+          const it = POUZDRA[$('sroub').value]; V1_ml = it.V1/1000; katalogSitko = it.cat;
 
         } else if (pouziti === 'Betonářská výztuž'){
-          const bar = $('sroub').value;
-          const d0 = parseFloat($('prumer').value);
-          const dia = parseFloat(bar.replace('ø','')) || 8;
-          const St = rodArea(dia);
-          V1_ml = (rodArea(d0) - St) * hloubka / 1000;
+          const d0 = parseFloat($('prumer').value); const dia = parseFloat($('sroub').value.replace('ø','')) || 8;
+          V1_ml = ( (Math.PI*Math.pow(d0/2,2)) - (Math.PI*Math.pow(dia/2,2)) ) * hloubka / 1000;
 
-        } else if (pouziti === 'FHB II-AL'){
-          const it = FHB_AL[$('sroub').value];
-          V1_ml = it.V1 / 1000;
+        } else if (pouziti === 'FHB II-AL'){ V1_ml = FHB_AL[$('sroub').value].V1/1000;
+        } else if (pouziti === 'FHB II-AS'){ V1_ml = FHB_AS[$('sroub').value].V1/1000; }
 
-        } else if (pouziti === 'FHB II-AS'){
-          const it = FHB_AS[$('sroub').value];
-          V1_ml = it.V1 / 1000;
-        }
+        if (!isFinite(V1_ml) || V1_ml <= 0) V1_ml = 0;
 
-        // Ochrana
-        if (!isFinite(V1_ml) || V1_ml <= 0){ V1_ml = 0; }
-
-        const V_total_ml = kotev * V1_ml * rez;
-        const pocet_na_kartusi = V1_ml > 0 ? (kart.V / V1_ml / rez) : 0;
-        const kartusi_need = V1_ml > 0 ? Math.ceil(V_total_ml / kart.V) : 0;
+        const V_total = kotev*V1_ml*rez;
+        const pocet_na_kartusi = V1_ml>0 ? (kart.V / V1_ml / rez) : 0;
+        const kartusi_need = V1_ml>0 ? Math.ceil(V_total / kart.V) : 0;
 
         $('objem1').textContent = fmtMl(V1_ml);
-        $('objem').textContent  = fmtMl(V_total_ml);
+        $('objem').textContent  = fmtMl(V_total);
         $('pocet').textContent  = fmtKs(pocet_na_kartusi);
         $('kartusi').textContent= fmtKs(kartusi_need);
 
-        let objednavka = (kartusi_need>0 ? `${kartusi_need}× ${kart.cat} ${kText}` : `${kText}`);
-        if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem' && katalogSitko){
-          objednavka += `<br>${sitekKs}× ${katalogSitko} ${$('sitko').value}`;
-        }
-        if (pouziti === 'Kotevní pouzdro s vnitřním závitem'){
-          objednavka += `<br>${kotev}× ${katalogSitko} ${$('sroub').value}`;
-        }
-        $('objednavka').innerHTML = objednavka;
+        let objed = (kartusi_need>0 ? `${kartusi_need}× ${kart.cat} ${kText}` : `${kText}`);
+        if (pouziti==='Kotevní šroub v děrovaném zdivu - se sítkem' && katalogSitko){ objed += `<br>${sitekKs}× ${katalogSitko} ${$('sitko').value}`; }
+        if (pouziti==='Kotevní pouzdro s vnitřním závitem'){ objed += `<br>${kotev}× ${katalogSitko} ${$('sroub').value}`; }
+        $('objednavka').innerHTML = objed;
 
-        // výška pro rodiče (pokud je v iframe)
         try {
-          const h = Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0);
+          const h = Math.max(document.documentElement.scrollHeight, document.body?document.body.scrollHeight:0);
           parent.postMessage({type:'calcHeight', height:h}, '*');
         } catch(e){}
       }
 
-      function init() {
-        // Nastavit výchozí volby
+      function init(){
         preserveSelect($('pouziti'), POUZITI);
         preserveSelect($('kartuse'), Object.keys(KARTUSE));
         $('pouziti').value = POUZITI[0];
-        updateUI('init');
-        calc();
+        updateUI(); calc();
       }
 
-      // Eventy – updateUI jen když je to potřeba
-      $('pouziti').addEventListener('change', () => { updateUI('pouziti'); calc(); });
-      $('sitko').addEventListener('change', () => { updateUI('sitko'); calc(); });
-      $('sroub').addEventListener('change', () => { updateUI('sroub'); calc(); });
+      $('pouziti').addEventListener('change', ()=>{ updateUI(); calc(); });
+      $('sitko').addEventListener('change', ()=>{ updateUI(); calc(); });
+      $('sroub').addEventListener('change', ()=>{ updateUI(); calc(); });
       ['prumer','hloubka','kotev','kartuse','rezerva'].forEach(id=>{
-        const el = $(id);
-        el.addEventListener('input', calc);
-        el.addEventListener('change', calc);
+        const el = $(id); el.addEventListener('input', calc); el.addEventListener('change', calc);
       });
 
-      // Init
       init();
     })();
   </script>
