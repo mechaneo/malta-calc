@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Kalkulačka spotřeby chemické malty | Fischer</title>
   <meta name="description" content="Kalkulačka spotřeby chemické malty podle logiky výrobce Fischer. Výpočet objemu na 1 kotvu, celku s rezervou, počet kotev na 1 kartuši, počet kartuší + objednací čísla.">
+
   <style>
     html,body{margin:0;padding:0}
     body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#111;background:#fff;line-height:1.5}
@@ -31,22 +32,11 @@
     .order a:hover{ border-bottom-style:solid; }
   </style>
 
-  <!-- POKUS o načtení mapy z Excelu (pokud nahraješ do stejné složky) -->
-  <script>
-    (function tryLoadMap(){
-      var s = document.createElement('script');
-      s.src = 'url-map.js';
-      s.async = true;
-      s.onload = function(){ /* OK – URL_MAP je k dispozici */ };
-      s.onerror = function(){ /* Nevadí, použijeme fallback na vyhledávání */ };
-      document.head.appendChild(s);
-    })();
-  </script>
+  <!-- DŮLEŽITÉ: načti mapu synchronně (globální proměnná window.URL_MAP) -->
+  <script src="url-map.js"></script>
 </head>
 <body>
   <div class="wrap">
-    <!-- Bez H1/úvodu – to máš v CMS -->
-
     <div class="card">
       <h2>Zadání</h2>
 
@@ -145,13 +135,9 @@
       };
       const fmtMl = v => `${Math.round(v)} ml`;
       const fmtKs = v => `${Math.round(v)} ks`;
-      const rodArea = d => Math.PI * Math.pow(d/2, 2); // mm^2
-      const escapeHtml = (s='') => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const rodArea = d => Math.PI * Math.pow(d/2, 2);
+      const escapeHtml = (s='') => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;'}[c]));
 
-      // Fallback vyhledávání – použijeme, pokud v mapě chybí přesná URL
-      const SITE_SEARCH = code => `https://www.google.com/search?q=${encodeURIComponent('site:fischer-cz.cz ' + code)}`;
-
-      // DATA
       const POUZITI = [
         'Kotevní šroub v plném materiálu - bez sítka',
         'Kotevní šroub v děrovaném zdivu - se sítkem',
@@ -168,11 +154,11 @@
         'FIS VL 410': {V:390, cat:'538584'},
         'FIS VL HIGHSPEED 410': {V:390, cat:'538586'},
         'FIS V Zero': {V:280, cat:'562064'},
-        'FIS V 360': {V:340, cat:'43994'},     // chybí v Excelu → fallback na vyhledávání
+        'FIS V 360': {V:340, cat:'43994'},
         'FIS V Plus 360': {V:340, cat:'558762'},
-        'FIS VW 360': {V:340, cat:'43997'},    // chybí v Excelu → fallback
+        'FIS VW 360': {V:340, cat:'43997'},
         'FIS VW Plus 360': {V:340, cat:'558768'},
-        'FIS P 300': {V:280, cat:'51061'},     // chybí v Excelu → fallback
+        'FIS P 300': {V:280, cat:'51061'},
         'FIS EM Plus 390': {V:370, cat:'544176'},
         'FIS EM Plus 585': {V:565, cat:'544165'},
         'FIS EM Plus 1500': {V:1470, cat:'544167'},
@@ -279,18 +265,15 @@
       }
 
       function linkFor(code, fallbackText){
-        const map = (typeof URL_MAP !== 'undefined') ? URL_MAP : {};
-        const rec = map && map[String(code)];
+        // Použij globální mapu, když je k dispozici; jinak čistý text (bez Google fallbacku).
+        const rec = (window.URL_MAP && window.URL_MAP[String(code)]) ? window.URL_MAP[String(code)] : null;
         if(rec && rec.url){
           const name = (rec.name && rec.name.trim()) ? rec.name.trim() : fallbackText;
           const text = escapeHtml(name);
           const href = escapeHtml(rec.url);
           return `<a href="${href}" target="_blank" rel="noopener" title="${text}">${text}</a>`;
         }
-        // Fallback – použij vyhledávání, ať je to vždy proklik
-        const text = escapeHtml(fallbackText);
-        const href = SITE_SEARCH(code);
-        return `<a href="${href}" target="_blank" rel="noopener" title="${text}">${text}</a>`;
+        return escapeHtml(fallbackText);
       }
 
       function calc(){
@@ -340,15 +323,11 @@
         $('pocet').textContent  = fmtKs(pocet_na_kartusi);
         $('kartusi').textContent= fmtKs(kartusi_need);
 
-        // === Prokliknutelné objednací číslo/kusovník ===
+        // prokliknutelná objednávka
         let objednavka = '';
         const kartCode = kart.cat;
         const kartLink = linkFor(kartCode, kText);
-        if (kartusi_need>0){
-          objednavka += `${kartusi_need}× ${kartLink} (${escapeHtml(kartCode)})`;
-        } else {
-          objednavka += `${kartLink} (${escapeHtml(kartCode)})`;
-        }
+        objednavka += (kartusi_need>0 ? `${kartusi_need}× ` : '') + `${kartLink} (${escapeHtml(kartCode)})`;
 
         if (pouziti === 'Kotevní šroub v děrovaném zdivu - se sítkem' && katalogSitko){
           const sitName = $('sitko').value;
@@ -363,7 +342,7 @@
 
         $('objednavka').innerHTML = objednavka;
 
-        // poslat výšku rodiči (aby iframe neměl vnitřní scroll ani mezeru)
+        // výška pro rodiče (iframe bez prázdného místa)
         try {
           const h = Math.max(document.documentElement.scrollHeight, document.body?document.body.scrollHeight:0);
           parent.postMessage({type:'calcHeight', height:h}, '*');
